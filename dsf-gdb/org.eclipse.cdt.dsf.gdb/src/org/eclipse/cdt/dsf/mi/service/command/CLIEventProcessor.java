@@ -113,7 +113,8 @@ public class CLIEventProcessor
     
 	@Override
     public void eventReceived(Object output) {
-        for (MIOOBRecord oobr : ((MIOutput)output).getMIOOBRecords()) {
+		
+		for (MIOOBRecord oobr : ((MIOutput)output).getMIOOBRecords()) {
             if (oobr instanceof MIConsoleStreamOutput) {
             	// Process Events of type DsfMIConsoleStreamOutput here
             	MIConsoleStreamOutput exec = (MIConsoleStreamOutput) oobr;

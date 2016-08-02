@@ -272,7 +272,8 @@
                icon="icons/elcl16/move_to_line_co.gif"
                helpContextId="move_to_line_action_context"
                label="%GlobalMoveToLineAction.label"
-               menubarPath="org.eclipse.ui.run/stepGroup"/>
+               menubarPath="org.eclipse.ui.run/stepGroup"
+               toolbarPath="org.eclipse.debug.ui.main.toolbar/renderGroup"/>
          <action
                class="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
                helpContextId="toggle_instruction_step_mode_action_context"
@@ -283,7 +284,7 @@
                state="false"
                style="toggle"
                toolbarPath="org.eclipse.debug.ui.main.toolbar/renderGroup">
-		 </action>                              
+		 </action>                        
       </actionSet>
    </extension>
    <extension
@@ -750,7 +751,7 @@
                menubarPath="cDebugActions"
                style="push"
                tooltip="%AddEventBreakpoint.tooltip">
-         </action>
+         </action>         
          <action
                class="org.eclipse.cdt.debug.internal.ui.actions.breakpoints.AddFunctionBreakpointActionDelegate"
                icon="icons/elcl16/function_brkpt_co.gif"
@@ -769,6 +770,15 @@
                style="push"
                helpContextId="add_line_breakpoint_action_context"
                tooltip="%AddLineBreakpoint.tooltip"/>
+		<action
+               class="org.eclipse.cdt.debug.internal.ui.actions.breakpoints.AddRocmBreakpointActionDelegate"
+               icon="icons/obj16/rocm_breakpoint.png"
+               id="org.eclipse.cdt.debug.internal.ui.actions.AddRocmBreakpoint"
+               label="%AddRocmBreakpoint.label"
+               menubarPath="cDebugActions"
+               style="push"
+               tooltip="%AddRocmBreakpoint.tooltip">
+         </action>
       </viewContribution>
       <viewContribution
             targetID="org.eclipse.debug.ui.RegisterView"
@@ -937,6 +947,37 @@
             </or>
          </enabledWhen>
       </page>
+      <page
+      		class="org.eclipse.cdt.debug.internal.ui.breakpoints.CRocmBreakpointPropertyPage"
+      		id="org.eclipse.cdt.debug.ui.propertypages.breakpoint.rocm"
+      		name="%RocmBreakpointPage.label">
+      		<enabledWhen>
+            <or>
+               <and>   
+                  <adapt type="org.eclipse.cdt.debug.core.model.ICBreakpoint">
+                  </adapt>
+                  <not>   
+                     <adapt type="org.eclipse.cdt.debug.core.model.ICTracepoint">
+                     </adapt>
+                  </not>
+                  <not>   
+                     <adapt type="org.eclipse.cdt.debug.core.model.ICDynamicPrintf">
+                     </adapt>
+                  </not>                 
+               </and>
+               <and>
+                  <instanceof value="org.eclipse.cdt.debug.ui.breakpoints.ICRocmBreakpointContext"/>
+                  <test property="org.eclipse.cdt.debug.ui.createBreakpointAdapt" value="org.eclipse.cdt.debug.core.model.ICBreakpoint" />
+                  <not>   
+                     <test property="org.eclipse.cdt.debug.ui.createBreakpointAdapt" value="org.eclipse.cdt.debug.core.model.ICTracepoint"/>
+                  </not>
+                  <not>   
+                     <test property="org.eclipse.cdt.debug.ui.createBreakpointAdapt" value="org.eclipse.cdt.debug.core.model.ICDynamicPrintf"/>
+                  </not>
+               </and>
+            </or>
+         </enabledWhen>
+	</page>      		
       <page
             class="org.eclipse.cdt.debug.ui.breakpointactions.ActionsPropertyPage"
             id="org.eclipse.cdt.debug.ui.breakpointactions.actions"

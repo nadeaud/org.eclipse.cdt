@@ -2079,6 +2079,17 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         		&& !fBreakpointManager.isEnabled()) {
             properties.put(MIBreakpoints.IS_ENABLED, false);
         }
+        
+        // Patch for now : if org.eclipse.cdt.dsf.debug.rocm.type is defined, set type as rocm
+        if(attributes.get("org.eclipse.cdt.dsf.debug.rocm.type") != null) {
+        	String type = (String) attributes.get("org.eclipse.cdt.dsf.debug.rocm.type");
+        	properties.put(MIBreakpoints.BREAKPOINT_TYPE, "rocm");
+        }
+        
+        if(attributes.get("org.eclipse.rocm.lineNumber") != null) {
+        	int lineNumber = (int) attributes.get("org.eclipse.rocm.lineNumber");
+        	properties.put(MIBreakpoints.LINE_NUMBER, lineNumber);
+        }
 
         return properties;
     }

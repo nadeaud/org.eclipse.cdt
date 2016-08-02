@@ -165,6 +165,16 @@ public class CAddBreakpointInteractiveRulerAction extends Action implements IUpd
 	 * @see org.eclipse.ui.texteditor.IUpdate#update()
 	 */
 	public void update() {
+		/*
+		MessageBox dialog = new MessageBox(CUIPlugin.getActiveWorkbenchShell(), SWT.ICON_QUESTION | SWT.OK| SWT.CANCEL);
+		dialog.setText("My info"); //$NON-NLS-1$
+		dialog.setMessage("Do you really want to do this?"); //$NON-NLS-1$
+
+		// open dialog and await user selection
+		int returnCode = dialog.open(); 
+	*/
+
+		
 		IDocument document= getDocument();
 		if (document != null) {
 		    int line = fRulerInfo.getLineOfLastMouseButtonActivity();

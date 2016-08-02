@@ -80,6 +80,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
     public static final String TRACEPOINT      = "tracepoint";          //$NON-NLS-1$
     /** @since 4.4 */
     public static final String DYNAMICPRINTF   = "dynamicPrintf";        //$NON-NLS-1$
+    /** @since 5.1*/
+    public static final String ROCM			= "rocm"; //$NON-NLS-1$
     	
     // Basic set of breakpoint attribute markers
     public static final String FILE_NAME     = PREFIX + ".fileName";    //$NON-NLS-1$
@@ -515,6 +517,10 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 			breakpointContext = createNewBreakpointMap(context);
 		}
 
+		String rocm = (String) attributes.get("org.eclipse.cdt.dsf.debug.rocm.type");
+		if(rocm != null) {
+			attributes.put("org.eclipse.cdt.dsf.debug.breakpoint.type", "rocm");
+		}
 		// Validate the breakpoint type
 		String type = (String) attributes.get(BREAKPOINT_TYPE);
 		if (type == null) {
@@ -538,6 +544,9 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 		else if (type.equals(MIBreakpoints.DYNAMICPRINTF)) {
 			addDynamicPrintf(context, attributes, drm);
+		}
+		else if(type.equals(MIBreakpoints.ROCM)) {
+			addRocmBreakpoint(context, attributes, drm);
 		}
 		else {
        		drm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_TYPE, null));
@@ -585,8 +594,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * @return
 	 * @since 3.0
 	 */
-	protected String formatLocation(Map<String, Object> attributes) {
 
+	protected String formatLocation(Map<String, Object> attributes) {
 		// Unlikely default location
 		String location = (String)  getProperty(attributes, ADDRESS, NULL_STRING);
 
@@ -712,6 +721,84 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		};
 
 		fRunControl.executeWithTargetAvailable(context, new Step[] { insertBreakpointStep }, finalRm);
+	}
+	
+	/**
+	 * @since 5.1
+	 */
+	protected void addRocmBreakpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes, final DataRequestMonitor<IBreakpointDMContext> finalRm) {
+		// Select the context breakpoints map
+				final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+				if (contextBreakpoints == null) {
+		       		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
+		       		finalRm.done();
+					return;
+				}
+
+				// Extract the relevant parameters (providing default values to avoid potential NPEs)
+				Object lNumber = attributes.get(LINE_NUMBER);
+				if(lNumber == null) {
+					return;
+				}
+				final int lineNumber = (int) lNumber;
+
+				final Boolean isTemporary    = (Boolean) getProperty(attributes, MIBreakpointDMData.IS_TEMPORARY, false);
+				final Boolean isHardware     = (Boolean) getProperty(attributes, MIBreakpointDMData.IS_HARDWARE,  false);
+				final String  condition      = (String)  getProperty(attributes, CONDITION,    NULL_STRING);
+				final Integer ignoreCount    = (Integer) getProperty(attributes, IGNORE_COUNT,          0 );
+				final String  threadId       = (String)  getProperty(attributes, MIBreakpointDMData.THREAD_ID,      "0"); //$NON-NLS-1$
+
+			    final Step insertBreakpointStep = new Step() {
+		    		@Override
+		    		public void execute(final RequestMonitor rm) {
+		    				fConnection.queueCommand(
+		    					fCommandFactory.createMIRocmBreakInsert(context, lineNumber), 
+								new DataRequestMonitor<MIBreakInsertInfo>(getExecutor(), rm) {
+									@Override
+									protected void handleSuccess() {
+
+										// With MI, an invalid location won't generate an error
+										if (getData().getMIBreakpoints().length == 0) {
+											rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, BREAKPOINT_INSERTION_FAILURE, null));
+											rm.done();
+											return;
+										}
+
+										// Create a breakpoint object and store it in the map
+										final MIBreakpointDMData newBreakpoint = new MIBreakpointDMData(getData().getMIBreakpoints()[0]);
+										String reference = newBreakpoint.getNumber();
+										if (reference.isEmpty()) {
+											rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, BREAKPOINT_INSERTION_FAILURE, null));
+											rm.done();
+											return;
+										}
+										contextBreakpoints.put(reference, newBreakpoint);
+
+										// Format the return value
+										MIBreakpointDMContext dmc = new MIBreakpointDMContext(MIBreakpoints.this, new IDMContext[] { context }, reference);
+										finalRm.setData(dmc);
+
+										// Flag the event
+										getSession().dispatchEvent(new BreakpointAddedEvent(dmc), getProperties());
+
+										// By default the breakpoint is enabled at creation
+										// If it wasn't supposed to be, then disable it right away
+										Map<String,Object> delta = new HashMap<String,Object>();
+										delta.put(IS_ENABLED, getProperty(attributes, IS_ENABLED, true));
+										modifyBreakpoint(dmc, delta, rm, false);
+									}
+
+									@Override
+									protected void handleError() {
+		    							rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, BREAKPOINT_INSERTION_FAILURE, getStatus().getException()));
+										rm.done();
+									}
+								});
+		    		}
+				};
+
+				fRunControl.executeWithTargetAvailable(context, new Step[] { insertBreakpointStep }, finalRm);
+
 	}
 
 	/**

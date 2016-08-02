@@ -92,6 +92,22 @@
       </attribute>
    </extension>
    <extension
+         id="rocmBreakpointMarker"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.cdt.debug.core.commonCLineBreakpointMarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+      <attribute
+            name="org.eclipse.cdt.debug.core.function">
+      </attribute>
+      <attribute
+            name="org.eclipse.cdt.debug.core.address">
+      </attribute>
+   </extension>
+   <extension
          id="cAddressBreakpointMarker"
          point="org.eclipse.core.resources.markers">
       <super
@@ -260,6 +276,12 @@
             name="%cLineBreakpoints.name"
             markerType="org.eclipse.cdt.debug.core.cLineBreakpointMarker"
             id="cLineBreakpoint">
+      </breakpoint>
+      <breakpoint
+      		class="org.eclipse.cdt.debug.internal.core.breakpoints.CRocmBreakpoint"
+      		name="%cRocmBreakpoint.name"
+      		markerType="org.eclipse.cdt.debug.core.cRocmBreakpointMarker"
+      		id="rocmBreakpoint">
       </breakpoint>
       <breakpoint
             class="org.eclipse.cdt.debug.internal.core.breakpoints.CAddressBreakpoint"

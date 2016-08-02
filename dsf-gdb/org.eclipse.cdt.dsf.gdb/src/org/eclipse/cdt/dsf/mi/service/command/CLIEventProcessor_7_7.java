@@ -44,6 +44,7 @@ public class CLIEventProcessor_7_7 extends CLIEventProcessor_7_0
 			for (MIOOBRecord oobr : ((MIOutput)output).getMIOOBRecords()) {
 				if (oobr instanceof MIConsoleStreamOutput) {
 					MIConsoleStreamOutput exec = (MIConsoleStreamOutput) oobr;
+					System.out.println(exec.getString());
 
 					// Look for a printout that indicates that we cannot call inferior methods.
 					// This affects Ubuntu 32bit OS
