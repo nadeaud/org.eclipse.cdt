@@ -82,6 +82,7 @@ import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupCreatedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupExitedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveListInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThreadGroupInfo;
@@ -102,6 +103,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.model.IProcess;
 import org.osgi.framework.BundleContext;
+
+import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 /**
  * This class implements the IProcesses interface for GDB 7.0
@@ -577,7 +580,8 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	// but as soon as it returns, we clear the cache.  So the cache will only trigger for those 
 	// overlapping situations.
 	private CommandCache fListThreadGroupsAvailableCache;
-
+	private CommandCache fListRunningWave;
+	
     // A map of process id to process names.  A name is fetched whenever we start
 	// debugging a process, and removed when we stop.
 	// This allows us to make sure that if a pid is re-used, we will not use an
@@ -725,6 +729,8 @@ public class GDBProcesses_7_0 extends AbstractDsfService
         // because it is not being affected by events.
         fListThreadGroupsAvailableCache = new CommandCache(getSession(), fCommandControl);
         fListThreadGroupsAvailableCache.setContextAvailable(fCommandControl.getContext(), true);
+        fListRunningWave = new CommandCache(getSession(), fCommandControl);
+        fListRunningWave.setContextAvailable(fCommandControl.getContext(), true);
 
         getSession().addServiceEventListener(this, null);
         fCommandControl.addEventListener(this);
@@ -1961,5 +1967,40 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     			}
     		}
     	}	
+	}
+
+	@Override
+	public void getRunningWaves(IDMContext dmc, DataRequestMonitor<List<HsailWaveModel>> rm) {
+		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+		if (controlDmc != null) {
+			fListRunningWave.execute(
+				fCommandFactory.createMIHsailThreadInfo(controlDmc),
+				new DataRequestMonitor<MIHsailWaveListInfo>(getExecutor(), rm) {
+					@Override
+					protected void handleCompleted() {
+						// We cannot actually cache this command since the process
+						// list may change.  But this cache allows to avoid overlapping
+						// sending of this command.
+						fListRunningWave.reset();
+						
+						if (isSuccess()) {
+							rm.setData(getData().getWaveList());
+						} else {
+							// Looks like this gdb doesn't truly support
+							// "-list-thread-groups --available". If we're
+							// debugging locally, resort to getting the
+							// list natively (as we do with gdb 6.8). If
+							// we're debugging remotely, the user is out
+							// of luck
+							rm.setData(null);
+						}
+						rm.done();
+					}
+				});
+		} else {
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid context.", null)); //$NON-NLS-1$
+			rm.done();
+		}
+		
 	}
 }

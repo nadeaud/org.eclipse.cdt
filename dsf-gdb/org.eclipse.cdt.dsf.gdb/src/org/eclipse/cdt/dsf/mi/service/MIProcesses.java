@@ -11,6 +11,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.mi.service;
 
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -49,6 +50,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.osgi.framework.BundleContext;
+
+import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 
 /**
@@ -738,4 +741,13 @@ public class MIProcesses extends AbstractDsfService implements IMIProcesses, ICa
 	public void flushCache(IDMContext context) {
         fContainerCommandCache.reset(context);
 	}
+
+	@Override
+	public void getRunningWaves(IDMContext dmc, DataRequestMonitor<List<HsailWaveModel>> rm) {
+		// TODO Auto-generated method stub
+		rm.setData(null);
+		rm.done();
+		
+	}
+
 }

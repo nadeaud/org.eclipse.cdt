@@ -11,6 +11,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.debug.service;
 
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -19,6 +20,8 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMData;
 import org.eclipse.cdt.dsf.datamodel.IDMEvent;
 import org.eclipse.cdt.dsf.service.IDsfService;
+
+import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 /**
  * This interface provides access to the OS's process 
@@ -179,4 +182,9 @@ public interface IProcesses extends IDsfService {
      * @param rm Request completion monitor, indicates success or failure.
      */
     void terminate(IThreadDMContext thread, RequestMonitor requestMonitor);
+    
+    /**
+     * Returns a list of running waves
+     */
+    void getRunningWaves(IDMContext dmc, DataRequestMonitor<List<HsailWaveModel>> rm);
 }
