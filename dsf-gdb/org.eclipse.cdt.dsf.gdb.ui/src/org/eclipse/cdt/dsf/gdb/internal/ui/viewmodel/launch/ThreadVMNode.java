@@ -231,7 +231,7 @@ public class ThreadVMNode extends AbstractThreadVMNode
                 /* SUSPENDED THREAD - NO PIN */
                 new LabelImage(DebugUITools.getImageDescriptor(IDebugUIConstants.IMG_OBJS_THREAD_SUSPENDED)),
             }));
-        return provider;
+        return new PropertiesBasedLabelProvider();
     }
 
 	@Override

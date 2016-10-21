@@ -879,6 +879,7 @@ public class AbstractCachingVMProvider extends AbstractVMProvider
             if (DEBUG_DELTA && (DEBUG_PRESENTATION_ID == null || getPresentationContext().getId().equals(DEBUG_PRESENTATION_ID))) {
                 trace(event, null, proxyStrategy, EventHandlerAction.processing);
             }
+            
             proxyStrategy.createDelta(
                 event, 
                 new DataRequestMonitor<IModelDelta>(getExecutor(), rm) {
@@ -905,6 +906,7 @@ public class AbstractCachingVMProvider extends AbstractVMProvider
                         return "Result of a delta for event: '" + event.toString() + "' in VMP: '" + AbstractCachingVMProvider.this + "'" + "\n" + getData().toString();  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
                     }   
                 });
+                
         } else {
             rm.done();
         }

@@ -349,6 +349,23 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
     public void createDelta(final Object event, final DataRequestMonitor<IModelDelta> rm) {
         final IRootVMNode rootNode = getVMProvider().getRootVMNode(); 
         
+        /*
+        if(event instanceof LaunchesEvent) {
+	        ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
+	        String msg = "Hello"; //$NON-NLS-1$
+	        VMDelta testDelta = new VMDelta(msg, IModelDelta.EXPAND | IModelDelta.SELECT);
+	        rm.setData(testDelta);
+	        rm.done();
+	        return;
+        }
+        else {
+        	String msg = "Hello"; //$NON-NLS-1$
+        	final VMDelta viewRootDelta = new VMDelta(msg, 0, IModelDelta.NO_CHANGE);
+        	rm.setData(viewRootDelta);
+        	rm.done();
+        	return;
+        }
+        */
         // Always create the rootDelta, no matter what delta flags the child nodes have.
         rootNode.createRootDelta(
             getRootElement(), event, 
@@ -369,7 +386,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
                         rm.setData(viewRootDelta);
                         rm.done();
                         return;
-                    }            
+                    }   
                     
                     callChildNodesToBuildDelta(
                         rootNode, 
@@ -383,8 +400,10 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
                                 rm.done();
                             }
                         });
+                        
                 }
             });
+        
     }
 
     protected VMDelta pruneDelta(VMDelta delta) {
