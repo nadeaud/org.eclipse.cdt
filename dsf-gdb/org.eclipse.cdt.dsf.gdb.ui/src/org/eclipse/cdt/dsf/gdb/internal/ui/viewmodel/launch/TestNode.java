@@ -1,23 +1,27 @@
 package org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
+import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.datamodel.IDMEvent;
 import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.dsf.ui.viewmodel.IVMAdapter;
+import org.eclipse.cdt.dsf.ui.viewmodel.AbstractVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMNode;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.ModelProxyInstalledEvent;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.AbstractDMVMProvider;
+import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IElementPropertiesProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IPropertiesUpdate;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.PropertiesBasedLabelProvider;
-import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IChildrenCountUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IChildrenUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider;
@@ -27,38 +31,86 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 
 public class TestNode implements IVMNode, IElementLabelProvider, IElementPropertiesProvider {
 	
-	public class TestVMContext implements IVMContext {
-		protected final IVMNode fNode;
-		private IDMContext fContext;
-
-		@Override
-		public <T> T getAdapter(Class<T> adapter) {
-			// TODO Auto-generated method stub
-			if(adapter.isInstance(this)) {
-				return (T)this;
-			}
-			IVMProvider provider = getVMNode().getVMProvider();
-			IVMAdapter vmAdapter = provider.getVMAdapter();
-			if(adapter.isInstance(vmAdapter)) {
-				return (T)vmAdapter;
-			}else if (adapter.isInstance(provider)) {
-				return (T)provider;
-			}else if (adapter.isInstance(getVMNode())) {
-				return (T)getVMNode();
-			}
-			return Platform.getAdapterManager().getAdapter(this, adapter);
+	public class TestVMContext extends AbstractDMContext {
+		
+		protected String fId;
+		
+		public TestVMContext(String id) {
+			super(DsfSession.getActiveSessions()[0], new IDMContext[0]);
+			fId = id;
 		}
 
 		@Override
-		public IVMNode getVMNode() {
-			// TODO Auto-generated method stub
-			return fNode;
+		public boolean equals(Object obj) {
+			if(obj instanceof TestVMContext) {
+				return fId.equals(((TestVMContext)obj).fId);
+			}
+			return false;
 		}
-		public TestVMContext(IVMNode node, IDMContext context) {
-			fNode = node;
-			fContext = context;
+		
+		@Override
+		public String toString() {
+			return baseToString() + ".testNode." + fId;
 		}
+
+		@Override
+		public int hashCode() {
+			 return baseHashCode() ^ (fId == null ? 0 : fId.hashCode()); 
+		}
+		
 	}
+	
+	@Immutable
+    protected class DMVMContext extends AbstractVMContext implements IDMVMContext {
+        private final IDMContext fDmc;
+        
+        public DMVMContext(IDMContext dmc) {
+            super(TestNode.this);
+            assert dmc != null;
+            fDmc = dmc;
+        }
+        
+        @Override
+		public IDMContext getDMContext() { return fDmc; }
+        
+        /**
+         * The IAdaptable implementation.  If the adapter is the DM context, 
+         * return the context, otherwise delegate to IDMContext.getAdapter().
+         */
+        @SuppressWarnings("unchecked")
+		@Override
+        public <T> T getAdapter(Class<T> adapter) {
+            T superAdapter = super.getAdapter(adapter);
+            if (superAdapter != null) {
+                return superAdapter;
+            } else {
+                // Delegate to the Data Model to find the context.
+                if (adapter.isInstance(fDmc)) {
+                    return (T)fDmc;
+                } else {
+                    return fDmc.getAdapter(adapter);
+                }
+            }
+        }
+        
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof TestNode.DMVMContext)) return false;
+            DMVMContext otherVmc = (DMVMContext)other;
+            return TestNode.this.equals(otherVmc.getVMNode()) &&
+                   fDmc.equals(otherVmc.fDmc);
+        }
+        
+        @Override
+        public int hashCode() {
+            return TestNode.this.hashCode() + fDmc.hashCode(); 
+        }
+     
+        @Override
+        public String toString() {
+            return fDmc.toString();
+        }
+    }
 	
 	private DsfSession fSession;
 	private AbstractDMVMProvider fProvider;
@@ -71,6 +123,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		fSession = session;
 		fServiceTracker = new DsfServicesTracker(DsfUIPlugin.getBundleContext(), session.getId());
 		fLabelProvider = createLabelProvider();
+		
 	}
 	
 	private IElementLabelProvider createLabelProvider() {
@@ -117,6 +170,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * Called by TreeModelProvider
 		 */
 		for(IHasChildrenUpdate update : updates) {
+			update.setHasChilren(false);
 			update.done();
 		}
 		
@@ -124,7 +178,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 
 	@Override
 	public void update(IPropertiesUpdate[] updates) {
-		// TODO Auto-generated method stub
 		/* Behavior of ThreadVMNode :
 		 * For each update, find the corresponding Context.
 		 * Retrieve the execution data from dsf
@@ -135,7 +188,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 
 	@Override
 	public void update(ILabelUpdate[] updates) {
-		// TODO Auto-generated method stub
 		// Call fLabelProvider's update (PropertiesBasedLabelProvider
 		fLabelProvider.update(updates);
 	}
@@ -158,30 +210,32 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	@Override
 	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {
 		// Generates delta from events
-		IDMContext dmc = event instanceof IDMEvent<?> ? ((IDMEvent<?>)event).getDMContext() : null;
+		//IDMContext dmc = event instanceof IDMEvent<?> ? ((IDMEvent<?>)event).getDMContext() : null;
 		
 		if(event instanceof ModelProxyInstalledEvent) {
 		
-			parent.addNode(new TestVMContext(TestNode.this, dmc), IModelDelta.CONTENT);
 		}
+		parent.addNode(new DMVMContext(new TestVMContext("0")), IModelDelta.CONTENT | IModelDelta.SELECT | IModelDelta.REVEAL); //$NON-NLS-1$
 		requestMonitor.done();
 		
 	}
 
+	@SuppressWarnings("restriction")
 	@Override
 	public void getContextsForEvent(VMDelta parentDelta, Object event, DataRequestMonitor<IVMContext[]> rm) {
-		// TODO Auto-generated method stub
+        rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
+        rm.done();
+        /*
 		if(event instanceof ModelProxyInstalledEvent) {
-			TestVMContext context = new TestVMContext(this, null); 
-			rm.setData(new IVMContext[] { context });
+			TestVMContext context = new TestVMContext("0"); 
+			rm.setData(new IDMContext[] { new DMVMContext(new TestVMContext("0")) });
 		}
 		rm.done();
-		
+		*/
 	}
 
 	@Override
 	public void dispose() {
-		// TODO Auto-generated method stud
 		fServiceTracker.dispose();
 	}
 
