@@ -1,11 +1,14 @@
 package org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch;
 
+import java.util.Map;
+
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -19,6 +22,9 @@ import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.AbstractDMVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IElementPropertiesProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IPropertiesUpdate;
+import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelAttribute;
+import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelColumnInfo;
+import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelText;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.PropertiesBasedLabelProvider;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -30,6 +36,8 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.ILabelUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 
 public class TestNode implements IVMNode, IElementLabelProvider, IElementPropertiesProvider {
+	
+	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
 	
 	public class TestVMContext extends AbstractDMContext {
 		
@@ -50,7 +58,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		
 		@Override
 		public String toString() {
-			return baseToString() + ".testNode." + fId;
+			return baseToString() + ".testNode." + fId; //$NON-NLS-1$
 		}
 
 		@Override
@@ -108,7 +116,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
      
         @Override
         public String toString() {
-            return fDmc.toString();
+            return fDmc.toString() + ".TestNodeVM"; //$NON-NLS-1$
         }
     }
 	
@@ -128,6 +136,19 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	
 	private IElementLabelProvider createLabelProvider() {
 		PropertiesBasedLabelProvider provider = new PropertiesBasedLabelProvider();
+		provider.setColumnInfo(
+				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
+				new LabelColumnInfo(new LabelAttribute[]  {
+						new LabelText (
+								"test display !!", //$NON-NLS-1$
+								new String[] { TEST_PROPERTY })
+						{
+							@Override
+		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
+		                        return Boolean.TRUE.equals(properties.get(TEST_PROPERTY));
+		                    }
+						}
+				}));
 		
 		return provider;
 	}
@@ -159,6 +180,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 *		-retourne un IDMContext par thread, utilisé pour créé un VMContext par thread et l'ajouter à l'update
 		 */
 		for(IChildrenUpdate update : updates) {
+			update.setChild(new DMVMContext(new TestVMContext("0")), 0); //$NON-NLS-1$
 			update.done();
 		}
 		
@@ -185,6 +207,10 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * 		-
 		 */
 		for(IPropertiesUpdate update : updates) {
+			if(update.getElement() instanceof DMVMContext) {
+				DMVMContext context = (DMVMContext)update.getElement();
+				update.setProperty(TEST_PROPERTY, Boolean.TRUE);
+			}
 			update.done();
 		}
 		
@@ -205,9 +231,11 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public int getDeltaFlags(Object event) {
 		
 		// Indicate if the Node needs to create a delta for the event
-		/*if (event instanceof ModelProxyInstalledEvent) {
-			return IModelDelta.STATE | IModelDelta.EXPAND;
-		}*/
+		if (event instanceof ModelProxyInstalledEvent) {
+			return IModelDelta.NO_CHANGE;
+		}else if (event instanceof IContainerSuspendedDMEvent) {
+			return IModelDelta.CONTENT | IModelDelta.SELECT | IModelDelta.EXPAND;
+		}
 		return IModelDelta.NO_CHANGE;
 	}
 
@@ -216,7 +244,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		// Generates delta from events
 		//IDMContext dmc = event instanceof IDMEvent<?> ? ((IDMEvent<?>)event).getDMContext() : null;
 		
-		if(event instanceof ModelProxyInstalledEvent) {
+		if(event instanceof IContainerSuspendedDMEvent) { //ModelProxyInstalledEvent) {
 			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
 			parent.addNode(new DMVMContext(new TestVMContext("0")), 0, IModelDelta.STATE | IModelDelta.SELECT); //$NON-NLS-1$
 		}
@@ -229,13 +257,13 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public void getContextsForEvent(VMDelta parentDelta, Object event, DataRequestMonitor<IVMContext[]> rm) {
         rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
         rm.done();
-        
+        /*
 		if(event instanceof ModelProxyInstalledEvent) {
 			TestVMContext context = new TestVMContext("0"); 
-			rm.setData(new IDMContext[] { new DMVMContext(new TestVMContext("0")) });
+			rm.setData(new IDMVMContext[] { new DMVMContext(new TestVMContext("0")) });
 		}
 		rm.done();
-		
+		*/
 	}
 
 	@Override
