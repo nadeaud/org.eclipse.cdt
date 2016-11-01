@@ -145,6 +145,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
+			update.setChildCount(1);
 			update.done();
 		}
 		
@@ -170,7 +171,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * Called by TreeModelProvider
 		 */
 		for(IHasChildrenUpdate update : updates) {
-			update.setHasChilren(false);
+			update.setHasChilren(true);
 			update.done();
 		}
 		
@@ -183,6 +184,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * Retrieve the execution data from dsf
 		 * 		-
 		 */
+		for(IPropertiesUpdate update : updates) {
+			update.done();
+		}
 		
 	}
 
@@ -201,9 +205,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public int getDeltaFlags(Object event) {
 		
 		// Indicate if the Node needs to create a delta for the event
-		if (event instanceof ModelProxyInstalledEvent) {
-			return IModelDelta.CONTENT;
-		}
+		/*if (event instanceof ModelProxyInstalledEvent) {
+			return IModelDelta.STATE | IModelDelta.EXPAND;
+		}*/
 		return IModelDelta.NO_CHANGE;
 	}
 
@@ -213,9 +217,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		//IDMContext dmc = event instanceof IDMEvent<?> ? ((IDMEvent<?>)event).getDMContext() : null;
 		
 		if(event instanceof ModelProxyInstalledEvent) {
-		
+			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
+			parent.addNode(new DMVMContext(new TestVMContext("0")), 0, IModelDelta.STATE | IModelDelta.SELECT); //$NON-NLS-1$
 		}
-		parent.addNode(new DMVMContext(new TestVMContext("0")), IModelDelta.CONTENT | IModelDelta.SELECT | IModelDelta.REVEAL); //$NON-NLS-1$
 		requestMonitor.done();
 		
 	}
@@ -225,13 +229,13 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public void getContextsForEvent(VMDelta parentDelta, Object event, DataRequestMonitor<IVMContext[]> rm) {
         rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
         rm.done();
-        /*
+        
 		if(event instanceof ModelProxyInstalledEvent) {
 			TestVMContext context = new TestVMContext("0"); 
 			rm.setData(new IDMContext[] { new DMVMContext(new TestVMContext("0")) });
 		}
 		rm.done();
-		*/
+		
 	}
 
 	@Override
