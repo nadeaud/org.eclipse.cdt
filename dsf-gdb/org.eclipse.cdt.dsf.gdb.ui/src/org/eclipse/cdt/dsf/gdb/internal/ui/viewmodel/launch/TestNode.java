@@ -38,6 +38,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 public class TestNode implements IVMNode, IElementLabelProvider, IElementPropertiesProvider {
 	
 	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
+	public final String TEST_ID = "test.node.if"; //$NON-NLS-1$
 	
 	public class TestVMContext extends AbstractDMContext {
 		
@@ -56,6 +57,10 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			return false;
 		}
 		
+		public String getId() {
+			return fId;
+		}
+		
 		@Override
 		public String toString() {
 			return baseToString() + ".testNode." + fId; //$NON-NLS-1$
@@ -71,6 +76,8 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	@Immutable
     protected class DMVMContext extends AbstractVMContext implements IDMVMContext {
         private final IDMContext fDmc;
+        
+        private int level = 0;
         
         public DMVMContext(IDMContext dmc) {
             super(TestNode.this);
@@ -140,8 +147,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[]  {
 						new LabelText (
-								"test display !!", //$NON-NLS-1$
-								new String[] { TEST_PROPERTY })
+								"test display {1}", //$NON-NLS-1$
+								new String[] { TEST_PROPERTY,
+												TEST_ID })
 						{
 							@Override
 		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
@@ -166,7 +174,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
-			update.setChildCount(1);
+			update.setChildCount(3);
 			update.done();
 		}
 		
@@ -180,7 +188,10 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 *		-retourne un IDMContext par thread, utilisé pour créé un VMContext par thread et l'ajouter à l'update
 		 */
 		for(IChildrenUpdate update : updates) {
-			update.setChild(new DMVMContext(new TestVMContext("0")), 0); //$NON-NLS-1$
+			int startOffset = update.getOffset() != -1 ? update.getOffset() : 0;
+			for(int i = 0; i < update.getLength() ; i++) {
+				update.setChild(new DMVMContext(new TestVMContext(Integer.toString(i))), startOffset++);
+			}
 			update.done();
 		}
 		
@@ -204,12 +215,13 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		/* Behavior of ThreadVMNode :
 		 * For each update, find the corresponding Context.
 		 * Retrieve the execution data from dsf
-		 * 		-
 		 */
+		 	
 		for(IPropertiesUpdate update : updates) {
 			if(update.getElement() instanceof DMVMContext) {
 				DMVMContext context = (DMVMContext)update.getElement();
 				update.setProperty(TEST_PROPERTY, Boolean.TRUE);
+				update.setProperty(TEST_ID, ((TestVMContext)context.getDMContext()).getId());
 			}
 			update.done();
 		}
@@ -246,7 +258,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		
 		if(event instanceof IContainerSuspendedDMEvent) { //ModelProxyInstalledEvent) {
 			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
-			parent.addNode(new DMVMContext(new TestVMContext("0")), 0, IModelDelta.STATE | IModelDelta.SELECT); //$NON-NLS-1$
+			Object obj = new DMVMContext(new TestVMContext("0"));
+			parent.addNode(obj, 0, IModelDelta.EXPAND);
+
+			VMDelta delta = parent.getChildDelta(obj);
+			delta.addNode(new DMVMContext(new TestVMContext("8")), 0, IModelDelta.STATE | IModelDelta.SELECT);
+			delta.setChildCount(1);
 		}
 		requestMonitor.done();
 		
