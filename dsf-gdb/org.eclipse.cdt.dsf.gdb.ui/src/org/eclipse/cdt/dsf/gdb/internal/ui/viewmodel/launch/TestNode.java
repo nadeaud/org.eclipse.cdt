@@ -13,7 +13,6 @@ import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
-import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
@@ -76,6 +75,15 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		public String getId() { return fId; }
 		public HashMap<String, StackNodeDM> getMap() { return fMap; }		
 		public Collection<StackNodeDM> getChildren() { return fMap.values(); }	
+		@SuppressWarnings("unchecked")
+		@Override
+	    public <T> T getAdapter(Class<T> adapterType) {
+	        T retVal = (T)fSession.getModelAdapter(adapterType);
+	        if (retVal == null) {
+	            retVal = super.getAdapter(adapterType);
+	        }
+	        return retVal;
+	    }
 		
 		public StackNodeDM add(String key) {
 			StackNodeDM child = new StackNodeDM(key, fProvider, fSession);
@@ -104,59 +112,17 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 */
 		public boolean isLeaf() {
 			return fMap.isEmpty();
-		}
-		
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> T getAdapter(Class<T> adapterType) {
-			T retval = (T)fSession.getModelAdapter(adapterType);
-			if(retval == null) {
-				retval = super.getAdapter(adapterType);
-			}
-			return retval;
-		}
-		
+		}		
 	}
 	
-	public class TestVMContext extends AbstractDMContext {
-		
-		protected String fId;
-		
-		public TestVMContext(String id) {
-			super(DsfSession.getActiveSessions()[0], new IDMContext[0]);
-			fId = id;
-		}
 
-		@Override
-		public boolean equals(Object obj) {
-			if(obj instanceof TestVMContext) {
-				return fId.equals(((TestVMContext)obj).fId);
-			}
-			return false;
-		}
-		
-		public String getId() {
-			return fId;
-		}
-		
-		@Override
-		public String toString() {
-			return baseToString() + ".testNode." + fId; //$NON-NLS-1$
-		}
-
-		@Override
-		public int hashCode() {
-			 return baseHashCode() ^ (fId == null ? 0 : fId.hashCode()); 
-		}
-		
-	}
-	
 	@Immutable
     protected class StackVMContext extends AbstractVMContext  {
-        private StackNodeDM fNode;
+        private StackNodeDM fStackNode;
         
-        public StackVMContext(IDMContext dmc) {
+        public StackVMContext(StackNodeDM node) {
             super(TestNode.this);
+            fStackNode = node;
         }
         
         //@Override
@@ -174,30 +140,32 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
                 return superAdapter;
             } else {
                 // Delegate to the Data Model to find the context.
-                if (adapter.isInstance(fNode)) {
-                    return (T)fNode;
+                if (adapter.isInstance(fStackNode)) {
+                    return (T)fStackNode;
                 } else {
-                    return fNode.getAdapter(adapter); //fDmc.getAdapter(adapter);
+                    return fStackNode.getAdapter(adapter); //fDmc.getAdapter(adapter);
                 }
             }
         }
+        
+        public StackNodeDM getStackNode() { return fStackNode; }
         
         @Override
         public boolean equals(Object other) {
             if (!(other instanceof TestNode.StackVMContext)) return false;
             StackVMContext otherVmc = (StackVMContext)other;
             return TestNode.this.equals(otherVmc.getVMNode()) &&
-            		fNode.equals(otherVmc.fNode);
+            		fStackNode.equals(otherVmc.fStackNode);
         }
         
         @Override
         public int hashCode() {
-            return TestNode.this.hashCode() + fNode.hashCode(); 
+            return TestNode.this.hashCode() + fStackNode.hashCode(); 
         }
      
         @Override
         public String toString() {
-            return fNode.toString() + ".TestNodeVM"; //$NON-NLS-1$
+            return fStackNode.toString() + ".TestNodeVM"; //$NON-NLS-1$
         }
     }
 	
@@ -280,7 +248,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				}
 				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
 				for(StackNodeDM e : node.getChildren()) {
-					update.setChild(e, updateIdx++);
+					update.setChild(new StackVMContext(e), updateIdx++);
 				}
 				update.done();
 			}
@@ -301,6 +269,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		for(IChildrenUpdate update : updates) {
 			Object element = update.getElement();
 			if(element instanceof StackVMContext) {
+				for(StackNodeDM node : ((StackVMContext)element).get)
 				update.done();
 			}
 			else {
