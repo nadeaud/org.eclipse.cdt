@@ -1,25 +1,37 @@
 package org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
+import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
+import org.eclipse.cdt.dsf.debug.service.IStack;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.dsf.ui.concurrent.ViewerDataRequestMonitor;
 import org.eclipse.cdt.dsf.ui.viewmodel.AbstractVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMNode;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
-import org.eclipse.cdt.dsf.ui.viewmodel.ModelProxyInstalledEvent;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.AbstractDMVMProvider;
-import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IElementPropertiesProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IPropertiesUpdate;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelAttribute;
@@ -27,6 +39,7 @@ import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelColumnInfo;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelText;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.PropertiesBasedLabelProvider;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IChildrenCountUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IChildrenUpdate;
@@ -39,6 +52,71 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	
 	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
 	public final String TEST_ID = "test.node.if"; //$NON-NLS-1$
+	
+	public class StackNodeDM extends PlatformObject {
+		
+		private String fId; 
+		private DsfSession fSession;
+		private AbstractDMVMProvider fProvider;	
+		private StackNodeDM fParent;		
+		private List<IDMContext> fThreads;		
+		private HashMap<String, StackNodeDM> fMap;
+		
+		public StackNodeDM(String id, AbstractDMVMProvider provider, DsfSession session) {
+			fId = id;
+			fProvider = provider;
+			fSession = session;
+			fThreads = new ArrayList<IDMContext>();
+			fMap = new HashMap<>();
+		}		
+		/* Getters */
+		public StackNodeDM getItem(String key) { return fMap.get(key); }
+		public DsfSession getSession() { return fSession; }
+		public AbstractDMVMProvider getProvider() { return fProvider; }
+		public String getId() { return fId; }
+		public HashMap<String, StackNodeDM> getMap() { return fMap; }		
+		public Collection<StackNodeDM> getChildren() { return fMap.values(); }	
+		
+		public StackNodeDM add(String key) {
+			StackNodeDM child = new StackNodeDM(key, fProvider, fSession);
+			fMap.put(key, child);
+			return child;
+		}
+		public void putAll(StackNodeDM node) {
+			fMap.putAll(node.fMap);
+		}		
+		public void addThread(IDMContext thread) {
+			fThreads.add(thread);
+		}		
+		public StackNodeDM addThreads(StackNodeDM node) {
+			for(IDMContext context : node.fThreads)
+				this.fThreads.add(context);
+			return this;
+		}		
+		public void addThreads(List<IDMContext> contexts) {
+			for(IDMContext context : contexts) {
+				fThreads.add(context);
+			}
+		}
+		/**
+		 * Return true if it is a leaf (i.e. it does not have children)
+		 * @return boolean
+		 */
+		public boolean isLeaf() {
+			return fMap.isEmpty();
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T> T getAdapter(Class<T> adapterType) {
+			T retval = (T)fSession.getModelAdapter(adapterType);
+			if(retval == null) {
+				retval = super.getAdapter(adapterType);
+			}
+			return retval;
+		}
+		
+	}
 	
 	public class TestVMContext extends AbstractDMContext {
 		
@@ -74,19 +152,15 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	}
 	
 	@Immutable
-    protected class DMVMContext extends AbstractVMContext implements IDMVMContext {
-        private final IDMContext fDmc;
+    protected class StackVMContext extends AbstractVMContext  {
+        private StackNodeDM fNode;
         
-        private int level = 0;
-        
-        public DMVMContext(IDMContext dmc) {
+        public StackVMContext(IDMContext dmc) {
             super(TestNode.this);
-            assert dmc != null;
-            fDmc = dmc;
         }
         
-        @Override
-		public IDMContext getDMContext() { return fDmc; }
+        //@Override
+		//public IDMContext getDMContext() { return fDmc; }
         
         /**
          * The IAdaptable implementation.  If the adapter is the DM context, 
@@ -100,32 +174,42 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
                 return superAdapter;
             } else {
                 // Delegate to the Data Model to find the context.
-                if (adapter.isInstance(fDmc)) {
-                    return (T)fDmc;
+                if (adapter.isInstance(fNode)) {
+                    return (T)fNode;
                 } else {
-                    return fDmc.getAdapter(adapter);
+                    return fNode.getAdapter(adapter); //fDmc.getAdapter(adapter);
                 }
             }
         }
         
         @Override
         public boolean equals(Object other) {
-            if (!(other instanceof TestNode.DMVMContext)) return false;
-            DMVMContext otherVmc = (DMVMContext)other;
+            if (!(other instanceof TestNode.StackVMContext)) return false;
+            StackVMContext otherVmc = (StackVMContext)other;
             return TestNode.this.equals(otherVmc.getVMNode()) &&
-                   fDmc.equals(otherVmc.fDmc);
+            		fNode.equals(otherVmc.fNode);
         }
         
         @Override
         public int hashCode() {
-            return TestNode.this.hashCode() + fDmc.hashCode(); 
+            return TestNode.this.hashCode() + fNode.hashCode(); 
         }
      
         @Override
         public String toString() {
-            return fDmc.toString() + ".TestNodeVM"; //$NON-NLS-1$
+            return fNode.toString() + ".TestNodeVM"; //$NON-NLS-1$
         }
     }
+	
+	private DsfExecutor getExecutor() {
+		return fSession.getExecutor();
+	}
+	
+	private <V> V getService(Class<V> serviceClass) {
+		return fServiceTracker.getService(serviceClass);
+	}
+	
+	
 	
 	private DsfSession fSession;
 	private AbstractDMVMProvider fProvider;
@@ -174,11 +258,36 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
-			update.setChildCount(3);
-			update.done();
+	        update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
+	        update.done();
 		}
-		
 	}
+	
+	public void processUpdate(IChildrenUpdate update) {
+
+		ViewerDataRequestMonitor<StackNodeDM> _rm = 
+				new ViewerDataRequestMonitor<StackNodeDM>(getExecutor(), update) {
+			@Override
+			protected void handleCompleted() {
+				if(! isSuccess()) {
+					update.done();
+					return;
+				}
+				StackNodeDM node = getData();
+				if(node == null) {
+					update.done();
+					return;
+				}
+				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
+				for(StackNodeDM e : node.getChildren()) {
+					update.setChild(e, updateIdx++);
+				}
+				update.done();
+			}
+		};
+		getProcesses(_rm);
+	}
+	
 
 	@Override
 	public void update(IChildrenUpdate[] updates) {
@@ -187,16 +296,22 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * This function call getProcessesBeingDebugged
 		 *		-retourne un IDMContext par thread, utilisé pour créé un VMContext par thread et l'ajouter à l'update
 		 */
+		
+		
 		for(IChildrenUpdate update : updates) {
-			int startOffset = update.getOffset() != -1 ? update.getOffset() : 0;
-			for(int i = 0; i < update.getLength() ; i++) {
-				update.setChild(new DMVMContext(new TestVMContext(Integer.toString(i))), startOffset++);
+			Object element = update.getElement();
+			if(element instanceof StackVMContext) {
+				update.done();
 			}
-			update.done();
+			else {
+				processUpdate(update);
+			}
+				
 		}
 		
 	}
 
+	@SuppressWarnings("restriction")
 	@Override
 	public void update(IHasChildrenUpdate[] updates) {
 		/* Behavior of ThreadVMNode :
@@ -204,8 +319,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * Called by TreeModelProvider
 		 */
 		for(IHasChildrenUpdate update : updates) {
+			//update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
 			update.setHasChilren(true);
-			update.done();
+	        update.done();
 		}
 		
 	}
@@ -218,10 +334,8 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 */
 		 	
 		for(IPropertiesUpdate update : updates) {
-			if(update.getElement() instanceof DMVMContext) {
-				DMVMContext context = (DMVMContext)update.getElement();
+			if(update.getElement() instanceof StackVMContext) {
 				update.setProperty(TEST_PROPERTY, Boolean.TRUE);
-				update.setProperty(TEST_ID, ((TestVMContext)context.getDMContext()).getId());
 			}
 			update.done();
 		}
@@ -243,30 +357,258 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public int getDeltaFlags(Object event) {
 		
 		// Indicate if the Node needs to create a delta for the event
-		if (event instanceof ModelProxyInstalledEvent) {
-			return IModelDelta.NO_CHANGE;
-		}else if (event instanceof IContainerSuspendedDMEvent) {
-			return IModelDelta.CONTENT | IModelDelta.SELECT | IModelDelta.EXPAND;
+		if (event instanceof IContainerSuspendedDMEvent) {
+			return IModelDelta.CONTENT | IModelDelta.EXPAND;
 		}
 		return IModelDelta.NO_CHANGE;
 	}
+	
+	public void getFrameData(IFrameDMContext[] contexts, DataRequestMonitor<String[]>rm) {
+		IStack service = fServiceTracker.getService(IStack.class);
+		
+		CountingRequestMonitor crm = new CountingRequestMonitor(fSession.getExecutor(), rm);
+		crm.setDoneCount(contexts.length);
+		
+		String[] array = new String[contexts.length];
+		rm.setData(array);
+		
+		for (int i = 0; i < contexts.length; ++i) {
+			int index = i;
+			IFrameDMContext context = contexts[i];
+			service.getFrameData(context, 
+					new DataRequestMonitor<IFrameDMData>(fSession.getExecutor(), crm) {
+				@Override
+				protected void handleSuccess() {
+					if(!isSuccess()) {
+						crm.done();
+						return;
+					}
+					array[index] =  getData().getFunction();
+					crm.done();
+					return;
+				}
+			});
+		}
+	}
+	
+	/**
+	 * Retrieve the stack for each thread.
+	 * @param contexts Array of IDMContext where each item represents a thread.
+	 * @param rm RequestMonitor to fill with an array of StackNodeDM, each
+	 * 			representing the root for a thread.
+	 */
+	private void getStackForThreads(IDMContext[] contexts, DataRequestMonitor<StackNodeDM[]> rm) {
+		
+		CountingRequestMonitor crm = new CountingRequestMonitor(fSession.getExecutor(), rm);
+		crm.setDoneCount(contexts.length);
+		
+		/* Replace by a CountingRequestMonitor with data ? */
+		StackNodeDM[] nodes = new StackNodeDM[contexts.length];
+		rm.setData(nodes);
+		
+		for (int i = 0; i < contexts.length; ++i) {
+			IDMContext context = contexts[i];
+			int index = i;
+			if (! (context instanceof IExecutionDMContext))
+				continue;
+			
+			fSession.getExecutor().execute(new DsfRunnable() {
+				
+				@Override
+				public void run() {
+					IStack stackService = fServiceTracker.getService(IStack.class);
+					stackService.getFrames(
+							context,
+							new DataRequestMonitor<IFrameDMContext []>(fSession.getExecutor(), crm) {
+								@Override
+								public void handleCompleted() {
+									if(!isSuccess()) {
+										crm.done();
+										return;
+									}
+									DataRequestMonitor<String[]> _rm = 
+											new DataRequestMonitor<String[]>(getExecutor(), crm){
+										@Override
+										protected void handleCompleted() {
+											if(! isSuccess()) {
+												crm.done();
+												return;
+											}
+											StackNodeDM root = new StackNodeDM(null, fProvider, fSession);
+											StackNodeDM child = root;
+											for(int i = 0; i < getData().length; ++i) {
+												child = child.add(getData()[i]);
+											}
+											child.addThread(context);
+											nodes[index] = root;
+											crm.done();
+										}
+									};
+									getFrameData(getData(), _rm);
+									return;
+								}
+							});
+				}
+			});
+			
+			
+		}
+	}
+	
+	private StackNodeDM mergeTrees(StackNodeDM first, StackNodeDM second) {
+		if(first == null && second == null)
+			return null;
+		if(first == null)
+			return second;
+		if(second == null)
+			return first;
+		if(first.isLeaf() && second.isLeaf())
+			return first.addThreads(second);
+		if(first.isLeaf())
+			return second.addThreads(first);
+		if(second.isLeaf())
+			return first.addThreads(second);
+		
+		StackNodeDM node = new StackNodeDM(first.getId(), first.getProvider(), first.getSession());
+		node.putAll(first);
+		node.putAll(second);
+		node.addThreads(first).addThreads(second);
+		for(Map.Entry<String, StackNodeDM> e : node.getMap().entrySet()) {
+			e.setValue(mergeTrees(first.getItem(e.getKey()), second.getItem(e.getKey())));
+		}
+		return node;
+	}
+	
+	private StackNodeDM mergeTreeArray(StackNodeDM[] roots) {
+		StackNodeDM root = new StackNodeDM(null, fProvider, fSession);
+		if( roots.length <= 0 ) 
+			return root;
+		
+		root = roots[0];
+		for(int i = 1; i < roots.length; i++) {
+			root = mergeTrees(root, roots[i]);
+		}
+		return root;
+	}
+	
+	/**
+	 * Retrieve threads for each process
+	 * @param contexts Array of IDMContext representing processes.
+	 * @param rm
+	 */
+	private void getAllThreads(IDMContext[] contexts, DataRequestMonitor<StackNodeDM[]> rm) {
+		DsfExecutor exec = getExecutor();
+		CountingRequestMonitor crm = new CountingRequestMonitor(exec, rm);
+		crm.setDoneCount(contexts.length);
+		
+		StackNodeDM[] array = new StackNodeDM[contexts.length];
+		rm.setData(array);		
+		
+		for(int i = 0; i < contexts.length; ++i) {
+			int index = i;
+			IDMContext context = contexts[i];
+			getExecutor().execute(new DsfRunnable() {
+				@Override
+				public void run() {
+					IProcesses procService = getService(IProcesses.class);
+
+					procService.getProcessesBeingDebugged(context, 
+							new DataRequestMonitor<IDMContext[]>(exec, crm) {
+						@Override
+						public void handleCompleted() {
+							if(! isSuccess()) {
+								crm.done();
+								return;
+							}
+							
+							DataRequestMonitor<StackNodeDM[]> _rm =
+									new DataRequestMonitor<StackNodeDM[]>(getExecutor(),
+											crm) {
+										@Override
+										protected void handleCompleted() {
+											if(! isSuccess()) {
+												crm.done();
+												return;
+											}
+											StackNodeDM root = mergeTreeArray(getData());
+											array[index] = root;
+											crm.done();											
+										}
+										
+									};
+							
+							getStackForThreads(getData(), _rm);
+							return;
+						}
+					});
+
+				}
+			});
+		}
+	}
+	
+	private void getProcesses( DataRequestMonitor<StackNodeDM> rm) {
+		getExecutor().execute(new DsfRunnable() {
+			
+			@Override
+			public void run() {
+				IProcesses procService = getService(IProcesses.class);
+				ICommandControlService controlService = getService(ICommandControlService.class);
+				
+				if(controlService == null || procService == null) {
+					rm.done();
+					return;
+				}
+				
+				procService.getProcessesBeingDebugged(controlService.getContext(), 
+						new DataRequestMonitor<IDMContext[]>(getExecutor(), 
+								rm){
+							@Override
+							public void handleCompleted() {
+								if(! isSuccess()) {
+									rm.done();
+									return;
+								}
+								DataRequestMonitor<StackNodeDM[]> _rm = 
+										new DataRequestMonitor<StackNodeDM[]>(getExecutor(),
+												rm) {
+									@Override
+									protected void handleCompleted() {
+										if(! isSuccess()) {
+											rm.done();
+											return;
+										}
+										StackNodeDM root = mergeTreeArray(getData());
+										rm.setData(root);
+										rm.done();
+									}
+								};
+								getAllThreads(getData(), _rm);
+								return;
+							}
+					
+				});
+			}
+		});
+	}
+	
+	
 
 	@Override
 	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {
-		// Generates delta from events
-		//IDMContext dmc = event instanceof IDMEvent<?> ? ((IDMEvent<?>)event).getDMContext() : null;
-		
-		if(event instanceof IContainerSuspendedDMEvent) { //ModelProxyInstalledEvent) {
-			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
-			Object obj = new DMVMContext(new TestVMContext("0"));
-			parent.addNode(obj, 0, IModelDelta.EXPAND);
 
-			VMDelta delta = parent.getChildDelta(obj);
-			delta.addNode(new DMVMContext(new TestVMContext("8")), 0, IModelDelta.STATE | IModelDelta.SELECT);
-			delta.setChildCount(1);
-		}
-		requestMonitor.done();
 		
+		if(event instanceof IContainerSuspendedDMEvent) {
+			IContainerSuspendedDMEvent csEvent = (IContainerSuspendedDMEvent)event;
+			IExecutionDMContext triggeringCtx = csEvent.getTriggeringContexts().length != 0 
+					? csEvent.getTriggeringContexts()[0] : null;
+					
+			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
+			StackNodeDM node = new StackNodeDM(null, fProvider, fSession);
+			node.addThread(triggeringCtx);
+			parent.addNode(node, IModelDelta.EXPAND | IModelDelta.SELECT);
+			requestMonitor.done();
+		}		 
 	}
 
 	@SuppressWarnings("restriction")
@@ -274,13 +616,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public void getContextsForEvent(VMDelta parentDelta, Object event, DataRequestMonitor<IVMContext[]> rm) {
         rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
         rm.done();
-        /*
-		if(event instanceof ModelProxyInstalledEvent) {
-			TestVMContext context = new TestVMContext("0"); 
-			rm.setData(new IDMVMContext[] { new DMVMContext(new TestVMContext("0")) });
-		}
-		rm.done();
-		*/
 	}
 
 	@Override

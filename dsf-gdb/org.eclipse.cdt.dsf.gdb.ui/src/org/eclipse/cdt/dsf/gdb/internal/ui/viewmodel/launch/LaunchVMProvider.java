@@ -69,7 +69,8 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider
         // Container node to contain all processes and threads
         TestNode node = new TestNode(this, getSession());
         addChildNodes(launchNode, new IVMNode[] { node });
-        
+        addChildNodes(node, new IVMNode[] { node });
+        addChildNodes(node, new IVMNode[] { node });
         IVMNode containerNode = new ContainerVMNode(this, getSession());
         IVMNode processesNode = new GdbStandardProcessVMNode(this);
         //addChildNodes(launchNode, new IVMNode[] { containerNode, processesNode});
