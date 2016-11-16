@@ -14,9 +14,11 @@ import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IBreakpointsExtension.IBreakpointHitDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack;
@@ -31,6 +33,7 @@ import org.eclipse.cdt.dsf.ui.viewmodel.IVMNode;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.AbstractDMVMProvider;
+import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IElementPropertiesProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IPropertiesUpdate;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelAttribute;
@@ -68,6 +71,14 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			fThreads = new ArrayList<IDMContext>();
 			fMap = new HashMap<>();
 		}		
+		
+		/*
+		@Override
+		public boolean equals(Object obj) {
+			return false;
+		}
+		*/
+		
 		/* Getters */
 		public StackNodeDM getItem(String key) { return fMap.get(key); }
 		public DsfSession getSession() { return fSession; }
@@ -75,6 +86,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		public String getId() { return fId; }
 		public HashMap<String, StackNodeDM> getMap() { return fMap; }		
 		public Collection<StackNodeDM> getChildren() { return fMap.values(); }	
+		public IDMContext getDMContext() { return fThreads.size() > 0 ? fThreads.get(0) : null; }
 		@SuppressWarnings("unchecked")
 		@Override
 	    public <T> T getAdapter(Class<T> adapterType) {
@@ -117,7 +129,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	
 
 	@Immutable
-    protected class StackVMContext extends AbstractVMContext  {
+    protected class StackVMContext extends AbstractVMContext  implements IDMVMContext {
         private StackNodeDM fStackNode;
         
         public StackVMContext(StackNodeDM node) {
@@ -167,6 +179,11 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
         public String toString() {
             return fStackNode.toString() + ".TestNodeVM"; //$NON-NLS-1$
         }
+
+		@Override
+		public IDMContext getDMContext() {
+			return fStackNode.getDMContext();
+		}
     }
 	
 	private DsfExecutor getExecutor() {
@@ -199,13 +216,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[]  {
 						new LabelText (
-								"test display {1}", //$NON-NLS-1$
-								new String[] { TEST_PROPERTY,
-												TEST_ID })
+								"{0}", //$NON-NLS-1$
+								new String[] { TEST_ID })
 						{
 							@Override
 		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
-		                        return Boolean.TRUE.equals(properties.get(TEST_PROPERTY));
+		                        return properties.containsKey(TEST_ID);
 		                    }
 						}
 				}));
@@ -226,7 +242,11 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
-	        update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
+			if(update.getElement() instanceof StackVMContext) {
+				update.setChildCount(((StackVMContext)update.getElement()).getStackNode().getChildren().size());
+			} else {
+				update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
+			}
 	        update.done();
 		}
 	}
@@ -269,11 +289,26 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		for(IChildrenUpdate update : updates) {
 			Object element = update.getElement();
 			if(element instanceof StackVMContext) {
-				for(StackNodeDM node : ((StackVMContext)element).get)
+				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
+				for(StackNodeDM node : ((StackVMContext)element).getStackNode().getChildren()) {
+					update.setChild(new StackVMContext(node), updateIdx++);
+				}
 				update.done();
 			}
 			else {
-				processUpdate(update);
+				//processUpdate(update);
+				StackNodeDM node1 = new StackNodeDM("a", fProvider, fSession); //$NON-NLS-1$
+				StackNodeDM node2 = new StackNodeDM("b", fProvider, fSession); //$NON-NLS-1$
+				StackNodeDM node3 = new StackNodeDM("c", fProvider, fSession); //$NON-NLS-1$
+				StackNodeDM node4 = node1.add("d"); //$NON-NLS-1$
+				node2.add("e"); //$NON-NLS-1$
+				node4.add("f"); //$NON-NLS-1$
+				node4.add("g"); //$NON-NLS-1$
+				update.setChild(new StackVMContext(node1), 0);
+				update.setChild(new StackVMContext(node2), 1);
+				update.setChild(new StackVMContext(node3), 2);
+				update.done();
+																
 			}
 				
 		}
@@ -304,7 +339,8 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 	
 		for(IPropertiesUpdate update : updates) {
 			if(update.getElement() instanceof StackVMContext) {
-				update.setProperty(TEST_PROPERTY, Boolean.TRUE);
+				String name= ((StackVMContext)update.getElement()).getStackNode().getId();
+				update.setProperty(TEST_ID,name);
 			}
 			update.done();
 		}
@@ -326,8 +362,8 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public int getDeltaFlags(Object event) {
 		
 		// Indicate if the Node needs to create a delta for the event
-		if (event instanceof IContainerSuspendedDMEvent) {
-			return IModelDelta.CONTENT | IModelDelta.EXPAND;
+		if (event instanceof ISuspendedDMEvent || event instanceof IBreakpointHitDMEvent) {
+			return IModelDelta.CONTENT;
 		}
 		return IModelDelta.NO_CHANGE;
 	}
@@ -405,8 +441,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 											}
 											StackNodeDM root = new StackNodeDM(null, fProvider, fSession);
 											StackNodeDM child = root;
-											for(int i = 0; i < getData().length; ++i) {
-												child = child.add(getData()[i]);
+											String[] result = getData();
+											for(int i = result.length - 1; i >= 0; --i) {
+												child = child.add(result[i]);
 											}
 											child.addThread(context);
 											nodes[index] = root;
@@ -567,15 +604,15 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {
 
 		
-		if(event instanceof IContainerSuspendedDMEvent) {
+		if( event instanceof IBreakpointHitDMEvent || event instanceof ISuspendedDMEvent) {
 			IContainerSuspendedDMEvent csEvent = (IContainerSuspendedDMEvent)event;
 			IExecutionDMContext triggeringCtx = csEvent.getTriggeringContexts().length != 0 
 					? csEvent.getTriggeringContexts()[0] : null;
 					
-			parent.setFlags(parent.getFlags() | IModelDelta.EXPAND);
-			StackNodeDM node = new StackNodeDM(null, fProvider, fSession);
-			node.addThread(triggeringCtx);
-			parent.addNode(node, IModelDelta.EXPAND | IModelDelta.SELECT);
+			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT );
+			StackNodeDM node = new StackNodeDM("l", fProvider, fSession); //$NON-NLS-1$
+
+			parent.addNode(node, IModelDelta.CONTENT);
 			requestMonitor.done();
 		}		 
 	}
