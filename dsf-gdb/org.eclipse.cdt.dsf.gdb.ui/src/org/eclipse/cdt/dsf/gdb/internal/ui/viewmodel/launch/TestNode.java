@@ -78,11 +78,20 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
         private final IDMContext fDmc;
         
         private int level = 0;
+        public int fDepth;
+        
+        public DMVMContext(IDMContext dmc, int depth) {
+            super(TestNode.this);
+            assert dmc != null;
+            fDmc = dmc;
+            fDepth = depth;
+        }
         
         public DMVMContext(IDMContext dmc) {
             super(TestNode.this);
             assert dmc != null;
             fDmc = dmc;
+            fDepth = 0;
         }
         
         @Override
@@ -174,7 +183,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
-			update.setChildCount(3);
+			if(update.getElement() instanceof DMVMContext) {
+				int depth = ((DMVMContext)update.getElement()).fDepth;
+				update.setChildCount(depth+1);
+			} else {
+				update.setChildCount(3);
+			}
 			update.done();
 		}
 		
@@ -188,11 +202,20 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 *		-retourne un IDMContext par thread, utilisé pour créé un VMContext par thread et l'ajouter à l'update
 		 */
 		for(IChildrenUpdate update : updates) {
-			int startOffset = update.getOffset() != -1 ? update.getOffset() : 0;
-			for(int i = 0; i < update.getLength() ; i++) {
-				update.setChild(new DMVMContext(new TestVMContext(Integer.toString(i))), startOffset++);
+			if(update.getElement() instanceof DMVMContext) {
+				int startOffset = update.getOffset() != -1 ? update.getOffset() : 0;
+				int depth = ((DMVMContext)update.getElement()).fDepth;
+				for(int i = 0; i < update.getLength(); i++) {
+					update.setChild(new DMVMContext(new TestVMContext(Integer.toString(i+depth*2)), depth+1) , startOffset++);
+				}
+				update.done();
+			} else {
+				int startOffset = update.getOffset() != -1 ? update.getOffset() : 0;
+				for(int i = 0; i < update.getLength() ; i++) {
+					update.setChild(new DMVMContext(new TestVMContext(Integer.toString(i))), startOffset++);
+				}
+				update.done();
 			}
-			update.done();
 		}
 		
 	}
@@ -204,7 +227,16 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * Called by TreeModelProvider
 		 */
 		for(IHasChildrenUpdate update : updates) {
-			update.setHasChilren(true);
+			if(update.getElement() instanceof DMVMContext) {
+				int depth = ((DMVMContext)update.getElement()).fDepth;
+				if(depth > 2){
+					update.setHasChilren(false);
+				}else {
+					update.setHasChilren(true);
+				}
+			} else {
+				update.setHasChilren(true);
+			}
 			update.done();
 		}
 		
@@ -262,7 +294,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			parent.addNode(obj, 0, IModelDelta.EXPAND);
 
 			VMDelta delta = parent.getChildDelta(obj);
-			delta.addNode(new DMVMContext(new TestVMContext("8")), 0, IModelDelta.STATE | IModelDelta.SELECT);
+			delta.addNode(new DMVMContext(new TestVMContext("-1")), 0, IModelDelta.STATE | IModelDelta.SELECT);
 			delta.setChildCount(1);
 		}
 		requestMonitor.done();
