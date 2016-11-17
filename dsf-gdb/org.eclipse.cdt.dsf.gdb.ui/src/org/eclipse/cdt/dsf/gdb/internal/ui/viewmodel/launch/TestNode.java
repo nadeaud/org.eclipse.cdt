@@ -24,6 +24,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
+import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.concurrent.ViewerDataRequestMonitor;
@@ -88,6 +89,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		public HashMap<String, StackNodeDM> getMap() { return fMap; }		
 		public Collection<StackNodeDM> getChildren() { return fMap.values(); }	
 		public IDMContext getDMContext() { return fThreads.size() > 0 ? fThreads.get(0) : null; }
+		public List<IDMContext> getDMContexts() { return fThreads; }
 		@SuppressWarnings("unchecked")
 		@Override
 	    public <T> T getAdapter(Class<T> adapterType) {
@@ -243,12 +245,47 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[]  {
 						new LabelText (
+								"???", //$NON-NLS-1$
+								new String[] { })
+						{
+							@Override
+		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
+								String funcName = (String)properties.get(TEST_ID);
+								String threads = (String)properties.get(STACKNODE_THREAD_LIST);
+		                        return funcName == null && threads == null;
+		                    }
+						},
+						new LabelText (
 								"{0}", //$NON-NLS-1$
 								new String[] { TEST_ID })
 						{
 							@Override
 		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
-		                        return properties.containsKey(TEST_ID);
+								String funcName = (String)properties.get(TEST_ID);
+								String threads = (String)properties.get(STACKNODE_THREAD_LIST);
+		                        return funcName != null && threads == null;
+		                    }
+						},
+						new LabelText (
+								"{0} - Thread {1}", //$NON-NLS-1$
+								new String[] { TEST_ID, STACKNODE_THREAD_LIST })
+						{
+							@Override
+		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
+								String funcName = (String)properties.get(TEST_ID);
+								String threads = (String)properties.get(STACKNODE_THREAD_LIST);
+		                        return funcName != null && threads != null;
+		                    }
+						},
+						new LabelText (
+								"??? - Thread {0}", //$NON-NLS-1$
+								new String[] { STACKNODE_THREAD_LIST })
+						{
+							@Override
+		                    public boolean isEnabled(IStatus status, Map<String, Object> properties) {
+								String funcName = (String)properties.get(TEST_ID);
+								String threads = (String)properties.get(STACKNODE_THREAD_LIST);
+		                        return funcName == null && threads != null;
 		                    }
 						}
 				}));
@@ -400,9 +437,18 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			if(update.getElement() instanceof StackVMContext) {
 				StackNodeDM node = ((StackVMContext)update.getElement()).getStackNode();
 				update.setProperty(TEST_ID, node.getId());
-				if(!node.getChildren().isEmpty()) {
-					IDMContext[] contexts = node.getChildren().toArray(new IDMContext[0]);
-					update.setProperty(STACKNODE_THREAD_LIST, contexts);
+				if(!node.getDMContexts().isEmpty()) {
+					StringBuilder sb = new StringBuilder();
+					for(IDMContext context : node.getDMContexts()) {
+						if(context instanceof IMIExecutionDMContext) {
+							sb.append(((IMIExecutionDMContext)context).getThreadId());
+							sb.append(",");
+						}
+					}
+					String threads = sb.toString();
+					if(sb != null) {
+						update.setProperty(STACKNODE_THREAD_LIST, sb.toString());
+					}
 				}
 			}
 			update.done();
@@ -673,8 +719,8 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 					? csEvent.getTriggeringContexts()[0] : null;
 					
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT | IModelDelta.EXPAND );
-			StackNodeDM node = new StackNodeDM("l", fProvider, fSession); //$NON-NLS-1$
-
+			StackNodeDM node = new StackNodeDM(null, fProvider, fSession); //$NON-NLS-1$
+			node.addThread(triggeringCtx);
 			parent.addNode(node, IModelDelta.CONTENT | IModelDelta.EXPAND);
 			requestMonitor.done();
 		}		 
