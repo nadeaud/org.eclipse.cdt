@@ -19,10 +19,12 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
+import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses.IThreadRemovedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
 import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -120,6 +122,10 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			for(IDMContext context : contexts) {
 				fThreads.add(context);
 			}
+		}
+		@Override
+		public String toString() {
+			return "StackNodeDM " + fId;
 		}
 		/**
 		 * Return true if it is a leaf (i.e. it does not have children)
@@ -313,11 +319,22 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			else if(update.getElement() instanceof StackVMContext) {
 				update.setChildCount(((StackVMContext)update.getElement()).getStackNode().getChildren().size());
 			} else {
-				//update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
-				update.setChildCount(3);
+				update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
 			}
 	        update.done();
 		}
+	}
+	
+	protected void fillUpdateWithVMCs(IChildrenUpdate update, StackNodeDM root) {
+		StackNodeDM[] children = root.getChildren().toArray(new StackNodeDM[0]);
+		int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
+		final int endIdx = updateIdx + (update.getLength() != -1 ? update.getLength() : children.length);
+		while(updateIdx < endIdx && updateIdx < children.length) {
+			System.out.println("Set Child " + children[updateIdx].toString() + " at " + Integer.toString(updateIdx));
+			update.setChild(new StackVMContext(children[updateIdx]), updateIdx);
+			updateIdx++;
+		}
+		
 	}
 	
 	public void processUpdate(IChildrenUpdate update) {
@@ -335,10 +352,17 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 					update.done();
 					return;
 				}
+				fillUpdateWithVMCs(update, node);
+				/*
+				StackNodeDM[] nodes = node.getChildren().toArray(new StackNodeDM[0]);
 				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
-				for(StackNodeDM e : node.getChildren()) {
-					update.setChild(new StackVMContext(e), updateIdx++);
+				int endIdx = updateIdx + (update.getLength() != -1 ? update.getLength() : nodes.length);
+				while( updateIdx < endIdx && updateIdx < nodes.length) {
+					System.out.println("Set child " + nodes[updateIdx].toString() + " at " + Integer.toString(updateIdx));
+					update.setChild(new StackVMContext(nodes[updateIdx]), updateIdx);
+					updateIdx++;
 				}
+				*/
 				update.done();
 			}
 		};
@@ -358,15 +382,20 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		for(IChildrenUpdate update : updates) {
 			Object element = update.getElement();
 			if(element instanceof StackVMContext) {
+				fillUpdateWithVMCs(update, ((StackVMContext)element).getStackNode());
+				/*
 				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
 				StackNodeDM[] nodes = ((StackVMContext)element).getStackNode().getChildren().toArray(new StackNodeDM[0]);
 				for(int i = 0; i < update.getLength() && i < nodes.length; i++) {
 					//update.setChild(nodes[i], updateIdx++);
 					update.setChild(new StackVMContext(nodes[updateIdx]), updateIdx++);
 				}
+				*/
 				update.done();
 			}
 			else if (element instanceof TestVM) {
+				assert false;
+				/*
 				System.out.println(element.toString() + ", " + Integer.toString(update.getLength()) + " children");
 				int depth = ((TestVM)element).fDepth + 1;
 				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
@@ -376,22 +405,9 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 					update.setChild(obj, updateIdx++);
 				}
 				update.done();
+				*/
 			} else {
 				processUpdate(update);
-				StackNodeDM node1 = new StackNodeDM("a", fProvider, fSession); //$NON-NLS-1$
-				StackNodeDM node2 = new StackNodeDM("b", fProvider, fSession); //$NON-NLS-1$
-				StackNodeDM node3 = new StackNodeDM("c", fProvider, fSession); //$NON-NLS-1$
-				StackNodeDM node4 = node1.add("d"); //$NON-NLS-1$
-				node2.add("e"); //$NON-NLS-1$
-				node4.add("f"); //$NON-NLS-1$
-				node4.add("g"); //$NON-NLS-1$
-				//update.setChild(new StackVMContext(node1), 0);
-				//update.setChild(new StackVMContext(node2), 1);
-				//update.setChild(new StackVMContext(node3), 2);
-				//update.setChild(new TestVM("a"), 0);
-				//update.setChild(new TestVM("b"), 1);
-				//update.setChild(new TestVM("c"), 2);
-				//update.done();
 																
 			}
 				
@@ -551,9 +567,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 											StackNodeDM root = new StackNodeDM(null, fProvider, fSession);
 											StackNodeDM child = root;
 											String[] result = getData();
+											String temp = "";
 											for(int i = result.length - 1; i >= 0; --i) {
+												temp += result[i] + ",";
 												child = child.add(result[i]);
 											}
+											System.out.println(temp);
 											child.addThread(context);
 											nodes[index] = root;
 											crm.done();
@@ -662,6 +681,25 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		}
 	}
 	
+	void print_debug_tree(StackNodeDM root, int level) {
+		if(level == 0)
+			System.out.println("-----------------------------------");
+		String tab = "";
+		for(int i = 0; i < level; i++) {
+			tab += "\t";
+		}
+		String threads = "";
+		for(IDMContext context : root.getDMContexts()) {
+			if(context instanceof IMIExecutionDMContext) {
+				threads += ((IMIExecutionDMContext)context).getThreadId() + ", ";
+			}
+		}
+		System.out.println(tab + root.fId + ", threads : " + threads);
+		for(StackNodeDM node : root.getChildren()) {
+			print_debug_tree(node, level+1);
+		}
+	}
+	
 	private void getProcesses( DataRequestMonitor<StackNodeDM> rm) {
 		getExecutor().execute(new DsfRunnable() {
 			
@@ -695,6 +733,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 										}
 										StackNodeDM root = mergeTreeArray(getData());
 										rm.setData(root);
+										print_debug_tree(root, 0);
 										rm.done();
 									}
 								};
@@ -723,7 +762,11 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			node.addThread(triggeringCtx);
 			parent.addNode(node, IModelDelta.CONTENT | IModelDelta.EXPAND);
 			requestMonitor.done();
-		}		 
+		} else if (event instanceof ICommandControlShutdownDMEvent) {
+			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT);
+		} else if (event instanceof IThreadRemovedDMEvent) {
+			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT);
+		}
 	}
 
 	@SuppressWarnings("restriction")
