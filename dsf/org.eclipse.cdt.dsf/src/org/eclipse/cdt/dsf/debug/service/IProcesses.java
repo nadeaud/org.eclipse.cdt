@@ -167,6 +167,21 @@ public interface IProcesses extends IDsfService {
     void getProcessesBeingDebugged(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);
     
     /**
+     * Retrieves the list of work group for the specified parent
+     * @param dmc
+     * @param rm
+     */
+    void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);   
+    
+    /**
+     * Retrieves the list of waves that are under the specified parent
+     * 
+     * @param dmc The container for which waves must be retrieved
+     * @param rm Request completion monitor
+     */
+    void getHSAWaveForParent(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);
+    
+    /**
      * Checks whether the given process or thread can be terminated.
      * @param thread Thread or process to terminate.
      * @param rm Return token.

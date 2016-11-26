@@ -82,6 +82,8 @@ import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupCreatedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupExitedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveGroupInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWavesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThreadGroupInfo;
@@ -1466,7 +1468,6 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 			return executionDmcs;
 		}
 	}
-
 	private IMIContainerDMContext[] makeContainerDMCs(ICommandControlDMContext controlDmc, IThreadGroupInfo[] groups) {
 		// This is a workaround for post-mortem tracing because the early GDB release
 		// does not report a process when we do -list-thread-group
@@ -1990,5 +1991,102 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     			}
     		}
     	}	
+	}
+
+	@Override
+	public void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
+		
+		if(containerDmc != null) {
+			if (isExitedProcess(containerDmc)) {
+				rm.done(new IMIExecutionDMContext[0]);
+				return;
+			}
+			
+			fThreadCommandCache.execute(
+					fCommandFactory.createMIHsailWaveGroupList(controlDmc, containerDmc.getGroupId()),
+					new DataRequestMonitor<MIHsailWaveGroupInfo>(getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+							if (!isSuccess()) {
+								rm.done(new IMIContainerDMContext[0]);
+								return;
+							}
+							MIHsailWaveGroupInfo info = getData();
+							
+							if(info == null || info.getWorkGroups() == null || info.getWorkGroups().length <= 0) {
+								rm.done(new IMIContainerDMContext[0]);
+								return;
+							}
+							IMIContainerDMContext[] contexts = new IMIContainerDMContext[info.getWorkGroups().length];
+							
+							for(int i = 0; i < info.getWorkGroups().length; i++) {
+								/* Quick work-around for now : there is no process for HSA, so we create a fake on. */
+								IProcessDMContext processDmc = createProcessContext(controlDmc, "hsa0"); //$NON-NLS-1$
+								contexts[i] = createContainerContext(processDmc, info.getWorkGroups()[i]);
+							}
+							
+							rm.setData(contexts);
+							rm.done();
+							return;							
+						}
+					});
+		} else {
+			fThreadCommandCache.execute(
+					fCommandFactory.createMIHsailWaveGroupList(controlDmc, "testing"),
+					new DataRequestMonitor<MIHsailWaveGroupInfo>(getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+							if (!isSuccess()) {
+								rm.done(new IMIContainerDMContext[0]);
+								return;
+							}
+							MIHsailWaveGroupInfo info = getData();
+							if(info == null || info.getWorkGroups() == null || info.getWorkGroups().length <= 0) {
+								rm.done(new IMIContainerDMContext[0]);
+								return;
+							}
+							IMIContainerDMContext[] contexts = new IMIContainerDMContext[info.getWorkGroups().length];
+							//IMIExecutionDMContext [] tests = new IMIExecutionDMContext[info.getWorkGroups().length];
+							for(int i = 0; i < info.getWorkGroups().length; i++) {
+								/* Quick work-around for now : there is no process for HSA, so we create a fake on. */
+								IProcessDMContext processDmc = createProcessContext(controlDmc, "hsa0"); //$NON-NLS-1$
+								contexts[i] = createContainerContext(processDmc, info.getWorkGroups()[i]);
+								//tests[i] = createExecutionContext(null, null, "hsa" + info.getWorkGroups()[i]);
+							}
+							
+							rm.setData(contexts);
+							rm.done();
+							return;	
+						}
+					});
+		}
+		//rm.done(new IMIExecutionDMContext[0]);
+		return;
+		
+	}
+
+	@Override
+	public void getHSAWaveForParent(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
+		
+		if (controlDmc == null || containerDmc == null) {
+			rm.done(new IDMContext[0]);
+			return;
+		}
+		fThreadCommandCache.execute(
+				fCommandFactory.createMIHsailWavesList(controlDmc, containerDmc.getGroupId()),
+				new DataRequestMonitor<MIHsailWavesInfo>(getExecutor(), rm) {
+					@Override
+					protected void handleSuccess() {
+						IDMContext[] ctxs = new IDMContext[1];
+						ctxs[0] = createExecutionContext(containerDmc, null, "5"); 
+						rm.done(ctxs);
+						return;
+					}
+				});
+		
 	}
 }

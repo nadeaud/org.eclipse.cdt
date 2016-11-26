@@ -738,4 +738,17 @@ public class MIProcesses extends AbstractDsfService implements IMIProcesses, ICa
 	public void flushCache(IDMContext context) {
         fContainerCommandCache.reset(context);
 	}
+
+	@Override
+	public void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+		// TODO Auto-generated method stub
+		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Unsupported Method", null)); //$NON-NLS-1$        	        			
+		rm.done();
+	}
+
+	@Override
+	public void getHSAWaveForParent(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Unsupported Method", null)); //$NON-NLS-1$        	        			
+		rm.done();		
+	}
 }

@@ -68,19 +68,21 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider
 
         // Container node to contain all processes and threads
         TestNode node = new TestNode(this, getSession());
-        addChildNodes(launchNode, new IVMNode[] { node });
-        addChildNodes(node, new IVMNode[] { node });
+        //addChildNodes(launchNode, new IVMNode[] { node });
+        //addChildNodes(node, new IVMNode[] { node });
         
+        IVMNode hsaNode = new HSAGroupVMNode(this, getSession());
+        IVMNode hsaWaveNode = new HSAWaveVMNode(this, getSession());
         IVMNode containerNode = new ContainerVMNode(this, getSession());
         IVMNode processesNode = new GdbStandardProcessVMNode(this);
-        //addChildNodes(launchNode, new IVMNode[] { containerNode, processesNode});
+        addChildNodes(launchNode, new IVMNode[] { containerNode, processesNode, hsaNode});
+        addChildNodes(hsaNode, new IVMNode[] { hsaWaveNode });
         
         IVMNode threadsNode = new ThreadVMNode(this, getSession());
-        //addChildNodes(containerNode, new IVMNode[] { threadsNode });
+        addChildNodes(containerNode, new IVMNode[] { threadsNode });
         
         IVMNode stackFramesNode = new StackFramesVMNode(this, getSession());
-        //addChildNodes(threadsNode, new IVMNode[] { stackFramesNode });
-        
+        addChildNodes(threadsNode, new IVMNode[] { stackFramesNode });
         
     }
     

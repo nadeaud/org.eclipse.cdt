@@ -281,7 +281,8 @@ public class ContainerVMNode extends AbstractContainerVMNode
 							handleFailedUpdate(update);
 							return;
 						}
-						if (getData() != null) fillUpdateWithVMCs(update, getData());
+						if (getData() != null) 
+							fillUpdateWithVMCs(update, getData());
 						update.done();
 					}
 				});
