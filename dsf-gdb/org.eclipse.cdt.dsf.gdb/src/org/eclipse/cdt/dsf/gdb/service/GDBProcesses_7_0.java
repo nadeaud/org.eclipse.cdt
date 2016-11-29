@@ -56,6 +56,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IHSAWaveExecutionContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
@@ -191,6 +192,71 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 
 		@Override
 		public int hashCode() { return baseHashCode() ^ fThreadId.hashCode(); }
+	}
+	
+	@Immutable
+	static class MIHSAExecutionContext extends AbstractDMContext 
+	implements IHSAWaveExecutionContext
+	{
+		private String xId;
+		private String yId;
+		private String zId;
+		private String seId;
+		private String cuId;
+		private String simdId;
+		
+		protected MIHSAExecutionContext(String sessionId, IContainerDMContext containerDmc) {
+			super(sessionId,
+					containerDmc == null ? new IDMContext[0] :new IDMContext[] { containerDmc });
+			
+		}
+
+		@Override
+		public String getX() {
+			return xId;
+		}
+
+		@Override
+		public String getY() {
+			return yId;
+		}
+
+		@Override
+		public String getZ() {
+			return zId;
+		}
+
+		@Override
+		public String getSE() {
+			return seId;
+		}
+
+		@Override
+		public String getCU() {
+			return cuId;
+		}
+
+		@Override
+		public String getSIMD() {
+			return simdId;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if(! (obj instanceof MIHSAExecutionContext))
+				return false;
+			MIHSAExecutionContext ctx = (MIHSAExecutionContext)obj;
+			return this.xId.equals(ctx.xId) && this.yId.equals(ctx.yId) &&
+					this.zId.equals(ctx.zId) && this.seId.equals(ctx.seId) &&
+					this.cuId.equals(ctx.cuId) && this.simdId.equals(ctx.simdId);
+		}
+
+		@Override
+		public int hashCode() {
+			return xId.hashCode() ^ yId.hashCode() ^ zId.hashCode() ^ 
+					seId.hashCode() ^ cuId.hashCode() ^ simdId.hashCode();
+		}
+		
 	}
 
 	/**
@@ -854,6 +920,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
                                                         String threadId) {
     	return new MIExecutionDMC(getSession().getId(), containerDmc, threadDmc, threadId);
     }
+	
+	public IHSAWaveExecutionContext createHSAExecutionContext(IContainerDMContext containerDmc, 
+                                                        MIHsailWavesInfo.HsailWaveData data) {
+		MIHSAExecutionContext ctx = new MIHSAExecutionContext(getSession().getId(), containerDmc);
+		ctx.xId = data.xWg == null ? "" : data.xWg; //$NON-NLS-1$
+		ctx.yId = data.yWg == null ? "" : data.yWg; //$NON-NLS-1$
+		ctx.zId = data.zWg == null ? "" : data.zWg; //$NON-NLS-1$
+		ctx.seId = data.streamEngine == null ? "" : data.streamEngine; //$NON-NLS-1$
+		ctx.cuId = data.computeUnit == null ? "" : data.computeUnit; //$NON-NLS-1$
+		ctx.simdId = data.simd == null ? "" : data.simd; //$NON-NLS-1$
+		return ctx;
+	}
 
 	@Override
     public IMIContainerDMContext createContainerContext(IProcessDMContext processDmc,
@@ -2000,7 +2078,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		
 		if(containerDmc != null) {
 			if (isExitedProcess(containerDmc)) {
-				rm.done(new IMIExecutionDMContext[0]);
+				rm.done();
 				return;
 			}
 			
@@ -2010,13 +2088,13 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 						@Override
 						protected void handleSuccess() {
 							if (!isSuccess()) {
-								rm.done(new IMIContainerDMContext[0]);
+								rm.done();
 								return;
 							}
 							MIHsailWaveGroupInfo info = getData();
 							
 							if(info == null || info.getWorkGroups() == null || info.getWorkGroups().length <= 0) {
-								rm.done(new IMIContainerDMContext[0]);
+								rm.done();
 								return;
 							}
 							IMIContainerDMContext[] contexts = new IMIContainerDMContext[info.getWorkGroups().length];
@@ -2039,12 +2117,12 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 						@Override
 						protected void handleSuccess() {
 							if (!isSuccess()) {
-								rm.done(new IMIContainerDMContext[0]);
+								rm.done();
 								return;
 							}
 							MIHsailWaveGroupInfo info = getData();
 							if(info == null || info.getWorkGroups() == null || info.getWorkGroups().length <= 0) {
-								rm.done(new IMIContainerDMContext[0]);
+								rm.done();
 								return;
 							}
 							IMIContainerDMContext[] contexts = new IMIContainerDMContext[info.getWorkGroups().length];
@@ -2063,8 +2141,20 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 					});
 		}
 		//rm.done(new IMIExecutionDMContext[0]);
-		return;
-		
+		return;	
+	}
+	
+	@Override
+	public IDMContext getHSAWorkGroupsFocus(IDMContext dmc) {
+		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+		IProcessDMContext processDmc = createProcessContext(controlDmc, "hsa0"); //$NON-NLS-1$
+		return createContainerContext(processDmc, "0"); //$NON-NLS-1$
+	}
+	
+	@Override
+	public IDMContext getHSAWaveFocus(IDMContext dmc) {
+		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
+		return createExecutionContext(containerDmc, null, "0");
 	}
 
 	@Override
@@ -2081,9 +2171,16 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 				new DataRequestMonitor<MIHsailWavesInfo>(getExecutor(), rm) {
 					@Override
 					protected void handleSuccess() {
-						IDMContext[] ctxs = new IDMContext[1];
-						ctxs[0] = createExecutionContext(containerDmc, null, "5"); 
-						rm.done(ctxs);
+						if(!isSuccess()) {
+							rm.done(new IDMContext[0]);
+						}
+						MIHsailWavesInfo info = getData();
+						List<IDMContext> ctxs = new ArrayList<IDMContext>(info.getWavesData().size());
+				
+						for(MIHsailWavesInfo.HsailWaveData data : info.getWavesData()) {
+							ctxs.add(createHSAExecutionContext(containerDmc, data));
+						}
+						rm.done(ctxs.toArray(new IDMContext[0]));
 						return;
 					}
 				});

@@ -173,6 +173,10 @@ public interface IProcesses extends IDsfService {
      */
     void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);   
     
+    public IDMContext getHSAWorkGroupsFocus(IDMContext dmc);
+    
+    public IDMContext getHSAWaveFocus(IDMContext dmc);
+    
     /**
      * Retrieves the list of waves that are under the specified parent
      * 

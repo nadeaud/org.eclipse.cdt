@@ -13,7 +13,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
-import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
+import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.concurrent.ViewerDataRequestMonitor;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
@@ -49,7 +49,10 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[] {
 						new LabelText (
-								"HSA WorkGroup (,x,x)",
+								"HSA WorkGroup ({0},x,x)", //$NON-NLS-1$
+								new String[] { HSA_WORKGROUP_X_ID }),
+						new LabelText (
+								"Unknown HSA Group", //$NON-NLS-1$
 								new String[] {  })
 				}));
 		return provider;
@@ -91,17 +94,33 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 				});
 		
 	}
+	
+	public void buildHSAWorkGroupDelta (IDMContext dmc, VMDelta parent, int nodeOffSet, RequestMonitor rm) {
+		IProcesses procService = getServicesTracker() == null ? null : getServicesTracker().getService(IProcesses.class);
+		
+		if(procService == null) {
+			rm.done();
+			return;
+		}
+		parent.addNode(procService.getHSAWorkGroupsFocus(dmc), IModelDelta.CONTENT | IModelDelta.EXPAND);
+		rm.done();
+	}
 
 	@Override
 	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {
 		IDMContext dmc = event instanceof IDMEvent<?> ? ( (IDMEvent<?>)event).getDMContext() : null;
-		if (event instanceof IStartedDMEvent) {
-			parent.addNode(createVMContext(dmc), IModelDelta.CONTENT);
+		
+		/* TODO : Request to get the selected from rocm-gdb */
+		if (event instanceof IBreakpointHitDMEvent || event instanceof ISuspendedDMEvent) {
+			getSession().getExecutor().execute(new DsfRunnable() {
+				@Override
+				public void run() {
+					buildHSAWorkGroupDelta(dmc, parent, nodeOffset, requestMonitor);
+				}
+			});
+		} else {
+			requestMonitor.done();
 		}
-		else if (event instanceof IBreakpointHitDMEvent || event instanceof ISuspendedDMEvent) {
-			parent.addNode(createVMContext(dmc), IModelDelta.CONTENT);
-		}
-		requestMonitor.done();
 	}
 
 	@Override
@@ -129,8 +148,8 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 		for (final IPropertiesUpdate update : updates) {
 			if(update.getElement() instanceof IDMVMContext) {
 				IDMVMContext context  = (IDMVMContext)update.getElement();
-				if(context.getDMContext() instanceof IMIExecutionDMContext) {
-					String wgID = ((IMIExecutionDMContext)context.getDMContext()).getThreadId();
+				if(context.getDMContext() instanceof IMIContainerDMContext) {
+					String wgID = ((IMIContainerDMContext)context.getDMContext()).getGroupId();
 					update.setProperty(HSA_WORKGROUP_X_ID, wgID);
 				}
 			}
