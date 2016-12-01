@@ -72,7 +72,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIDataWriteMemoryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowExitCodeInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowLanguageInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBVersionInfo;
-import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveListInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWavesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
@@ -1006,8 +1006,8 @@ public class CommandFactory {
 	}
 	
 	// Only with rocm-gdb
-	public ICommand<MIHsailWaveListInfo> createMIHsailThreadInfo(ICommandControlDMContext dmc) {
-		return new MIHsailWaveList(dmc);
+	public ICommand<MIHsailWavesInfo> createMIHsailWavesList(ICommandControlDMContext dmc, String id) {
+		return new MIHsailWaves(dmc, id);
 	}
 	
 }

@@ -15,8 +15,6 @@
 package org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.utils;
 
 import java.util.ArrayList;
-import java.util.List;
-
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateCountingRequestMonitor;
@@ -46,8 +44,6 @@ import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS2;
 import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS2.ILoadInfo;
 import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses.IGdbThreadDMData;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
-
-import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 
 
@@ -147,7 +143,7 @@ public class DSFDebugModel implements IDSFTargetDataProxy {
 	
 	@Override
 	@ConfinedToDsfExecutor("sessionState.getDsfSession().getExecutor()")
-	public void getWaves(DSFSessionState sessionState, DataRequestMonitor<List<HsailWaveModel>> rm)
+	public void getWaves(DSFSessionState sessionState, DataRequestMonitor<IDMContext[]> rm)
 	{
 		final IProcesses procService = sessionState.getService(IProcesses.class);
 		// For now use the hardware context 
@@ -158,8 +154,8 @@ public class DSFDebugModel implements IDSFTargetDataProxy {
 			return;
 		}
 		
-		procService.getRunningWaves(context, 
-				new ImmediateDataRequestMonitor<List<HsailWaveModel>>(){
+		procService.getHSAWaveForParent(context, 
+				new ImmediateDataRequestMonitor<IDMContext[]>(){
 			@Override
 			protected void handleCompleted() {
 				rm.setData(getData());

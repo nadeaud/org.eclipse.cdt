@@ -11,8 +11,6 @@
 
 package org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.utils;
 
-import java.util.List;
-
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMData;
@@ -22,8 +20,6 @@ import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS.ICPUDMContext;
 import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS.ICoreDMContext;
 import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS2.ILoadInfo;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
-
-import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 /**
  * Describes the methods to query data from a target system under debug
@@ -42,7 +38,7 @@ public interface IDSFTargetDataProxy {
 	/** Requests list of Threads Related to the specified CPU and Core */
 	public void getThreads(DSFSessionState sessionState, ICPUDMContext cpuContext, ICoreDMContext coreContext, DataRequestMonitor<IDMContext[]> rm);
 	
-	public void getWaves(DSFSessionState sessionState, DataRequestMonitor<List<HsailWaveModel>> rm);
+	public void getWaves(DSFSessionState sessionState, DataRequestMonitor<IDMContext[]> rm);
 
 	/** Requests data for the thread associated to the give execution context */
 	public void getThreadData(DSFSessionState sessionState, ICPUDMContext cpuContext, ICoreDMContext coreContext, IMIExecutionDMContext execContext,

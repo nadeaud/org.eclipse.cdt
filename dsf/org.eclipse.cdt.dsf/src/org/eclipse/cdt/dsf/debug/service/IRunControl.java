@@ -42,6 +42,39 @@ public interface IRunControl extends IDsfService
      * for execution contexts, which by itself can perform run-control
      * operations. 
      */
+    
+    public interface IHSAWaveExecutionContext extends IExecutionDMContext {
+    	/**
+    	 * Retrieve the workgroup id in X dimension
+    	 * @return id
+    	 */
+    	public String getX();
+    	/**
+    	 * Retrieve the workgroup id in Y dimension
+    	 * @return id
+    	 */
+    	public String getY();
+    	/**
+    	 * Retrieve the workgroup id in Z dimension
+    	 * @return id
+    	 */
+    	public String getZ();
+    	/**
+    	 * Retrieve the streaming-engine id
+    	 * @return id
+    	 */
+    	public String getSE();
+    	/**
+    	 * Retrieve the compute-unit id
+    	 * @return id
+    	 */
+    	public String getCU();
+    	/**
+    	 * Retrieve the simd id
+    	 * @return id
+    	 */
+    	public String getSIMD();
+    }
 
     public interface IContainerDMContext extends IExecutionDMContext {}
 

@@ -56,6 +56,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IHSAWaveExecutionContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
@@ -82,7 +83,7 @@ import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupCreatedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupExitedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
-import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveListInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWavesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThreadGroupInfo;
@@ -103,8 +104,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.model.IProcess;
 import org.osgi.framework.BundleContext;
-
-import didier.multicore.visualizer.fx.utils.model.HsailWaveModel;
 
 /**
  * This class implements the IProcesses interface for GDB 7.0
@@ -192,6 +191,70 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 
 		@Override
 		public int hashCode() { return baseHashCode() ^ fThreadId.hashCode(); }
+	}
+	
+	@Immutable
+	static class MIHSAExecutionContext extends AbstractDMContext 
+		implements IHSAWaveExecutionContext
+	{
+		private String xId;
+		private String yId;
+		private String zId;
+		private String seId;
+		private String cuId;
+		private String simdId;
+		
+		protected MIHSAExecutionContext(String sessionId, IContainerDMContext containerDmc) {
+			super(sessionId,
+					containerDmc == null ? new IDMContext[0] :new IDMContext[] { containerDmc });
+			
+		}
+
+		@Override
+		public String getX() {
+			return xId;
+		}
+
+		@Override
+		public String getY() {
+			return yId;
+		}
+
+		@Override
+		public String getZ() {
+			return zId;
+		}
+
+		@Override
+		public String getSE() {
+			return seId;
+		}
+
+		@Override
+		public String getCU() {
+			return cuId;
+		}
+
+		@Override
+		public String getSIMD() {
+			return simdId;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if(! (obj instanceof MIHSAExecutionContext))
+				return false;
+			MIHSAExecutionContext ctx = (MIHSAExecutionContext)obj;
+			return this.xId.equals(ctx.xId) && this.yId.equals(ctx.yId) &&
+					this.zId.equals(ctx.zId) && this.seId.equals(ctx.seId) &&
+					this.cuId.equals(ctx.cuId) && this.simdId.equals(ctx.simdId);
+		}
+
+		@Override
+		public int hashCode() {
+			return xId.hashCode() ^ yId.hashCode() ^ zId.hashCode() ^ 
+					seId.hashCode() ^ cuId.hashCode() ^ simdId.hashCode();
+		}
 	}
 
 	/**
@@ -857,6 +920,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
                                                         String threadId) {
     	return new MIExecutionDMC(getSession().getId(), containerDmc, threadDmc, threadId);
     }
+	
+	public IHSAWaveExecutionContext createHSAExecutionContext(IContainerDMContext containerDmc, 
+			MIHsailWavesInfo.HsailWaveData data) {
+		MIHSAExecutionContext ctx = new MIHSAExecutionContext(getSession().getId(), containerDmc);
+		ctx.xId = data.xWg == null ? "" : data.xWg; //$NON-NLS-1$
+		ctx.yId = data.yWg == null ? "" : data.yWg; //$NON-NLS-1$
+		ctx.zId = data.zWg == null ? "" : data.zWg; //$NON-NLS-1$
+		ctx.seId = data.streamEngine == null ? "" : data.streamEngine; //$NON-NLS-1$
+		ctx.cuId = data.computeUnit == null ? "" : data.computeUnit; //$NON-NLS-1$
+		ctx.simdId = data.simd == null ? "" : data.simd; //$NON-NLS-1$
+		return ctx;
+	}
 
 	@Override
     public IMIContainerDMContext createContainerContext(IProcessDMContext processDmc,
@@ -1970,37 +2045,34 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	}
 
 	@Override
-	public void getRunningWaves(IDMContext dmc, DataRequestMonitor<List<HsailWaveModel>> rm) {
+	public void getHSAWaveForParent(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
 		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
-		if (controlDmc != null) {
-			fListRunningWave.execute(
-				fCommandFactory.createMIHsailThreadInfo(controlDmc),
-				new DataRequestMonitor<MIHsailWaveListInfo>(getExecutor(), rm) {
+		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
+		
+		if (controlDmc == null) {
+			rm.done(new IDMContext[0]);
+			return;
+		}
+		fListRunningWave.execute(
+				fCommandFactory.createMIHsailWavesList(controlDmc, 
+						containerDmc == null ? "-1" : containerDmc.getGroupId()), //$NON-NLS-1$
+				new DataRequestMonitor<MIHsailWavesInfo>(getExecutor(), rm) {
 					@Override
-					protected void handleCompleted() {
-						// We cannot actually cache this command since the process
-						// list may change.  But this cache allows to avoid overlapping
-						// sending of this command.
+					protected void handleSuccess() {
 						fListRunningWave.reset();
-						
-						if (isSuccess()) {
-							rm.setData(getData().getWaveList());
-						} else {
-							// Looks like this gdb doesn't truly support
-							// "-list-thread-groups --available". If we're
-							// debugging locally, resort to getting the
-							// list natively (as we do with gdb 6.8). If
-							// we're debugging remotely, the user is out
-							// of luck
-							rm.setData(null);
+						if(!isSuccess()) {
+							rm.done(new IDMContext[0]);
 						}
-						rm.done();
+						MIHsailWavesInfo info = getData();
+						List<IDMContext> ctxs = new ArrayList<IDMContext>(info.getWavesData().size());
+				
+						for(MIHsailWavesInfo.HsailWaveData data : info.getWavesData()) {
+							ctxs.add(createHSAExecutionContext(containerDmc, data));
+						}
+						rm.done(ctxs.toArray(new IDMContext[0]));
+						return;
 					}
 				});
-		} else {
-			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid context.", null)); //$NON-NLS-1$
-			rm.done();
-		}
 		
 	}
 }
