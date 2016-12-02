@@ -58,6 +58,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
 	public final String TEST_ID = "test.node.if"; //$NON-NLS-1$
 	public final String STACKNODE_THREAD_LIST = "stacknode.comparator.thread.list"; //$NON-NLS-1$
+	private boolean fInitialized = false;
 	
 	public class StackNodeDM extends PlatformObject {
 		
@@ -392,20 +393,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				}
 				*/
 				update.done();
-			}
-			else if (element instanceof TestVM) {
-				assert false;
-				/*
-				System.out.println(element.toString() + ", " + Integer.toString(update.getLength()) + " children");
-				int depth = ((TestVM)element).fDepth + 1;
-				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
-				for(int i = 0; i < update.getLength(); i++) {
-					TestVM obj = new TestVM(((TestVM) element).fMsg + Integer.toString(depth) + Integer.toString(updateIdx));
-					obj.fDepth = depth;
-					update.setChild(obj, updateIdx++);
-				}
-				update.done();
-				*/
 			} else {
 				processUpdate(update);
 																
@@ -488,7 +475,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		
 		// Indicate if the Node needs to create a delta for the event
 		if (event instanceof ISuspendedDMEvent || event instanceof IBreakpointHitDMEvent) {
-			return IModelDelta.CONTENT | IModelDelta.EXPAND;
+			return IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.STATE;
 		}
 		return IModelDelta.NO_CHANGE;
 	}
@@ -757,10 +744,15 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			IExecutionDMContext triggeringCtx = csEvent.getTriggeringContexts().length != 0 
 					? csEvent.getTriggeringContexts()[0] : null;
 					
-			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT | IModelDelta.EXPAND );
+			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT | IModelDelta.EXPAND);
 			StackNodeDM node = new StackNodeDM(null, fProvider, fSession); //$NON-NLS-1$
-			node.addThread(triggeringCtx);
-			parent.addNode(node, IModelDelta.CONTENT | IModelDelta.EXPAND);
+
+			if(!fInitialized) {
+				parent.addNode(node, triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND);
+				fInitialized = true;
+			} else {
+				parent.addNode(node, triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.REPLACED);
+			}
 			requestMonitor.done();
 		} else if (event instanceof ICommandControlShutdownDMEvent) {
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT);
