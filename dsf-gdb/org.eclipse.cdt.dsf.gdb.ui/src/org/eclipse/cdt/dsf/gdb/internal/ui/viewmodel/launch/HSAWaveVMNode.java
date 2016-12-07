@@ -40,6 +40,7 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 	public final String HSA_WAVE_NODE_VM_ID_X = "WAVE.NODE.VM.X.ID"; //$NON-NLS-1$ "hsaworkgroupvmnode.property.workgroup.id.x"; //
 	public final String HSA_WAVE_NODE_VM_ID_Y = "WAVE.NODE.VM.Y.ID"; //$NON-NLS-1$
 	public final String HSA_WAVE_NODE_VM_ID_Z = "WAVE.NODE.VM.Z.ID"; //$NON-NLS-1$
+	public final String HSA_WAVE_NODE_VM_ID = "WAVE.NODE.VM.WAVE.ID"; //$NON-NLS-1$
 
 	public HSAWaveVMNode(AbstractDMVMProvider provider, DsfSession session) {
 		super(provider, session, IRunControl.IHSAWaveExecutionContext.class);
@@ -52,11 +53,11 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[] {
 						new LabelText (
-								"wave ({0},{1},{2})", //$NON-NLS-1$
-								new String[] { HSA_WAVE_NODE_VM_ID_X, HSA_WAVE_NODE_VM_ID_Y, HSA_WAVE_NODE_VM_ID_Z})/*,
+								"Wave {0}, Work-Group ({1},{2},{3})", //$NON-NLS-1$
+								new String[] {HSA_WAVE_NODE_VM_ID, HSA_WAVE_NODE_VM_ID_X, HSA_WAVE_NODE_VM_ID_Y, HSA_WAVE_NODE_VM_ID_Z}),
 						new LabelText (
-								"Unknown wave",
-								new String[] { })*/
+								"Unknown wave", //$NON-NLS-1$
+								new String[] { })
 				}));
 		return provider;
 	}
@@ -68,10 +69,10 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 				IDMVMContext context  = (IDMVMContext)update.getElement();
 				if(context.getDMContext() instanceof IHSAWaveExecutionContext) {
 					IHSAWaveExecutionContext ctx = (IHSAWaveExecutionContext)context.getDMContext();
-					String xId = ctx.getX();
 					update.setProperty(HSA_WAVE_NODE_VM_ID_X, ctx.getX());
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Y, ctx.getY());
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Z, ctx.getZ());
+					update.setProperty(HSA_WAVE_NODE_VM_ID, ctx.getId());
 				}
 			}
 			update.done();

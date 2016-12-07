@@ -204,6 +204,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		private String seId;
 		private String cuId;
 		private String simdId;
+		private String waveId;
 		
 		protected MIHSAExecutionContext(String sessionId, IContainerDMContext containerDmc) {
 			super(sessionId,
@@ -212,10 +213,14 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		}
 
 		@Override
+		public String getId () {
+			return waveId;
+		}
+		
+		@Override
 		public String getX() {
 			return xId;
 		}
-
 		@Override
 		public String getY() {
 			return yId;
@@ -246,9 +251,12 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 			if(! (obj instanceof MIHSAExecutionContext))
 				return false;
 			MIHSAExecutionContext ctx = (MIHSAExecutionContext)obj;
+			return this.waveId.equals(ctx.waveId);
+			/*
 			return this.xId.equals(ctx.xId) && this.yId.equals(ctx.yId) &&
 					this.zId.equals(ctx.zId) && this.seId.equals(ctx.seId) &&
 					this.cuId.equals(ctx.cuId) && this.simdId.equals(ctx.simdId);
+					*/
 		}
 
 		@Override
@@ -930,6 +938,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		ctx.seId = data.streamEngine == null ? "" : data.streamEngine; //$NON-NLS-1$
 		ctx.cuId = data.computeUnit == null ? "" : data.computeUnit; //$NON-NLS-1$
 		ctx.simdId = data.simd == null ? "" : data.simd; //$NON-NLS-1$
+		ctx.waveId = data.waveId == null ? "" : data.waveId; //$NON-NLS-1$
 		return ctx;
 	}
 

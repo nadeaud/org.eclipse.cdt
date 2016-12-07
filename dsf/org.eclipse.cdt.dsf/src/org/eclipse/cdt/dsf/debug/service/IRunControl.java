@@ -45,6 +45,11 @@ public interface IRunControl extends IDsfService
     
     public interface IHSAWaveExecutionContext extends IExecutionDMContext {
     	/**
+    	 *  Retrieve the wave Id
+    	 * @return
+    	 */
+    	public String getId();
+    	/**
     	 * Retrieve the workgroup id in X dimension
     	 * @return id
     	 */
