@@ -58,7 +58,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
 	public final String TEST_ID = "test.node.if"; //$NON-NLS-1$
 	public final String STACKNODE_THREAD_LIST = "stacknode.comparator.thread.list"; //$NON-NLS-1$
-	private boolean fInitialized = false;
+	private StackNodeDM fDeltaElement = null;
 	
 	public class StackNodeDM extends PlatformObject {
 		
@@ -274,7 +274,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		                    }
 						},
 						new LabelText (
-								"{0} - Thread {1}", //$NON-NLS-1$
+								"{0} - Threads : {1}", //$NON-NLS-1$
 								new String[] { TEST_ID, STACKNODE_THREAD_LIST })
 						{
 							@Override
@@ -365,6 +365,35 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				}
 				*/
 				update.done();
+			}
+		};
+		getProcesses(_rm);
+	}
+	
+	public void processDelta(VMDelta parent, RequestMonitor rm, int flags) {
+		DataRequestMonitor<StackNodeDM> _rm = 
+				new DataRequestMonitor<StackNodeDM>(getExecutor(), rm) {
+			@Override
+			protected void handleCompleted() {
+				if(! isSuccess()) {
+					rm.done();
+					return;
+				}
+				StackNodeDM node = getData();
+				if(node == null) {
+					rm.done();
+					return;
+				}
+				StackNodeDM[] children = node.getChildren().toArray(new StackNodeDM[0]);
+				if(children.length > 0) {
+					if(fDeltaElement == null) {
+						parent.addNode(children[0], flags);
+					} else {
+						parent.addNode(children[0], flags);
+					}
+					fDeltaElement = children[0];
+				}
+				rm.done();
 			}
 		};
 		getProcesses(_rm);
@@ -745,15 +774,18 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 					? csEvent.getTriggeringContexts()[0] : null;
 					
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT | IModelDelta.EXPAND);
-			StackNodeDM node = new StackNodeDM(null, fProvider, fSession); //$NON-NLS-1$
+			String dummy = "dummy";
+			StackNodeDM node = new StackNodeDM(null, fProvider, fSession);
 
-			if(!fInitialized) {
-				parent.addNode(node, triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND);
-				fInitialized = true;
+			if(fDeltaElement == null) {
+				processDelta(parent, requestMonitor, IModelDelta.CONTENT | IModelDelta.EXPAND);
+				//parent.addNode(node, IModelDelta.CONTENT | IModelDelta.EXPAND);
+				//requestMonitor.done();
 			} else {
-				parent.addNode(node, triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.REPLACED);
+				//parent.addNode(fDeltaElement, IModelDelta.REMOVED);
+				processDelta(parent, requestMonitor, IModelDelta.CONTENT  | IModelDelta.EXPAND | IModelDelta.REPLACED);
+				//parent.addNode("test" + Long.toString(fInitialized), triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.REPLACED);
 			}
-			requestMonitor.done();
 		} else if (event instanceof ICommandControlShutdownDMEvent) {
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT);
 		} else if (event instanceof IThreadRemovedDMEvent) {
