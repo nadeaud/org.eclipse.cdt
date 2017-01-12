@@ -53,7 +53,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IHasChildrenUpdat
 import org.eclipse.debug.internal.ui.viewers.model.provisional.ILabelUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 
-public class TestNode implements IVMNode, IElementLabelProvider, IElementPropertiesProvider {
+public class StackAggregationNode implements IVMNode, IElementLabelProvider, IElementPropertiesProvider {
 	
 	public final String TEST_PROPERTY = "test.node.property"; //$NON-NLS-1$
 	public final String TEST_ID = "test.node.if"; //$NON-NLS-1$
@@ -76,14 +76,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			fThreads = new ArrayList<IDMContext>();
 			fMap = new HashMap<>();
 		}		
-		
-		/*
-		@Override
-		public boolean equals(Object obj) {
-			return false;
-		}
-		*/
-		
 		/* Getters */
 		public StackNodeDM getItem(String key) { return fMap.get(key); }
 		public DsfSession getSession() { return fSession; }
@@ -137,45 +129,14 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		}		
 	}
 	
-	protected class TestVM extends AbstractVMContext {
-		public TestVM(String msg) {
-			super(TestNode.this);
-			fMsg = msg;
-		}
-		public String fMsg;
-		public int fDepth;
-		@Override
-		public String toString() {
-			return "TestVM " + fMsg;
-		}
-		@Override
-		public boolean equals(Object obj) {
-			// TODO Auto-generated method stub
-			if(obj instanceof TestVM) {
-				TestVM test = (TestVM)obj;
-				return this.fMsg.equals(test.fMsg) && this.fDepth == test.fDepth;				
-			}
-			return false;
-		}
-		@Override
-		public int hashCode() {
-			// TODO Auto-generated method stub
-			return fMsg.hashCode() ^ fDepth;
-		}
-	}
-
 	@Immutable
     protected class StackVMContext extends AbstractVMContext  implements IDMVMContext {
         private StackNodeDM fStackNode;
         
         public StackVMContext(StackNodeDM node) {
-            super(TestNode.this);
+            super(StackAggregationNode.this);
             fStackNode = node;
         }
-        
-        //@Override
-		//public IDMContext getDMContext() { return fDmc; }
-        
         /**
          * The IAdaptable implementation.  If the adapter is the DM context, 
          * return the context, otherwise delegate to IDMContext.getAdapter().
@@ -200,15 +161,15 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
         
         @Override
         public boolean equals(Object other) {
-            if (!(other instanceof TestNode.StackVMContext)) return false;
+            if (!(other instanceof StackAggregationNode.StackVMContext)) return false;
             StackVMContext otherVmc = (StackVMContext)other;
-            return TestNode.this.equals(otherVmc.getVMNode()) &&
+            return StackAggregationNode.this.equals(otherVmc.getVMNode()) &&
             		fStackNode.equals(otherVmc.fStackNode);
         }
         
         @Override
         public int hashCode() {
-            return TestNode.this.hashCode() + fStackNode.hashCode(); 
+            return StackAggregationNode.this.hashCode() + fStackNode.hashCode(); 
         }
      
         @Override
@@ -231,13 +192,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	}
 	
 	
-	
 	private DsfSession fSession;
 	private AbstractDMVMProvider fProvider;
 	private DsfServicesTracker fServiceTracker;
 	private IElementLabelProvider fLabelProvider;
 
-	public TestNode(AbstractDMVMProvider provider, DsfSession session)
+	public StackAggregationNode(AbstractDMVMProvider provider, DsfSession session)
 	{
 		fProvider = provider;
 		fSession = session;
@@ -313,11 +273,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * tldr : check if the contexts' session is alive for every update. If not, cancel update
 		 */
 		for(IChildrenCountUpdate update : updates) {
-			if(update.getElement() instanceof TestVM) {
-				int depth = ((TestVM)update.getElement()).fDepth;
-				update.setChildCount(2-depth >= 0 ? 2-depth : 0);
-			}
-			else if(update.getElement() instanceof StackVMContext) {
+			if(update.getElement() instanceof StackVMContext) {
 				update.setChildCount(((StackVMContext)update.getElement()).getStackNode().getChildren().size());
 			} else {
 				update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
@@ -354,16 +310,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 					return;
 				}
 				fillUpdateWithVMCs(update, node);
-				/*
-				StackNodeDM[] nodes = node.getChildren().toArray(new StackNodeDM[0]);
-				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
-				int endIdx = updateIdx + (update.getLength() != -1 ? update.getLength() : nodes.length);
-				while( updateIdx < endIdx && updateIdx < nodes.length) {
-					System.out.println("Set child " + nodes[updateIdx].toString() + " at " + Integer.toString(updateIdx));
-					update.setChild(new StackVMContext(nodes[updateIdx]), updateIdx);
-					updateIdx++;
-				}
-				*/
 				update.done();
 			}
 		};
@@ -410,20 +356,10 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 * This function call getProcessesBeingDebugged
 		 *		-retourne un IDMContext par thread, utilisé pour créé un VMContext par thread et l'ajouter à l'update
 		 */
-		
-		
 		for(IChildrenUpdate update : updates) {
 			Object element = update.getElement();
 			if(element instanceof StackVMContext) {
 				fillUpdateWithVMCs(update, ((StackVMContext)element).getStackNode());
-				/*
-				int updateIdx = update.getOffset() != -1 ? update.getOffset() : 0;
-				StackNodeDM[] nodes = ((StackVMContext)element).getStackNode().getChildren().toArray(new StackNodeDM[0]);
-				for(int i = 0; i < update.getLength() && i < nodes.length; i++) {
-					//update.setChild(nodes[i], updateIdx++);
-					update.setChild(new StackVMContext(nodes[updateIdx]), updateIdx++);
-				}
-				*/
 				update.done();
 			} else {
 				processUpdate(update);
@@ -445,9 +381,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 			//update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
 			if (update.getElement() instanceof StackVMContext) {
 				update.setHasChilren(!((StackVMContext)update.getElement()).getStackNode().isLeaf());
-			} else if (update.getElement() instanceof TestVM) {
-				int depth = ((TestVM)update.getElement()).fDepth;
-				update.setHasChilren(2-depth >= 0);
 			} else {
 				//update.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "Not implemented, clients should call to update all children instead.", null)); //$NON-NLS-1$
 				update.setHasChilren(true);
@@ -465,10 +398,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 		 */
 		 	
 		for(IPropertiesUpdate update : updates) {
-			if(update.getElement() instanceof TestVM) {
-				String name = ((TestVM)update.getElement()).fMsg;
-				update.setProperty(TEST_ID, name);
-			}
 			if(update.getElement() instanceof StackVMContext) {
 				StackNodeDM node = ((StackVMContext)update.getElement()).getStackNode();
 				update.setProperty(TEST_ID, node.getId());
@@ -602,9 +531,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 								}
 							});
 				}
-			});
-			
-			
+			});			
 		}
 	}
 	
@@ -721,7 +648,6 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 	
 	private void getProcesses( DataRequestMonitor<StackNodeDM> rm) {
 		getExecutor().execute(new DsfRunnable() {
-			
 			@Override
 			public void run() {
 				IProcesses procService = getService(IProcesses.class);
@@ -759,35 +685,23 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 								getAllThreads(getData(), _rm);
 								return;
 							}
-					
 				});
 			}
 		});
-	}
-	
-	
+	}	
 
 	@Override
-	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {
-
-		
+	public void buildDelta(Object event, VMDelta parent, int nodeOffset, RequestMonitor requestMonitor) {		
 		if( event instanceof IBreakpointHitDMEvent || event instanceof ISuspendedDMEvent) {
 			IContainerSuspendedDMEvent csEvent = (IContainerSuspendedDMEvent)event;
 			IExecutionDMContext triggeringCtx = csEvent.getTriggeringContexts().length != 0 
 					? csEvent.getTriggeringContexts()[0] : null;
-					
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT | IModelDelta.EXPAND);
-			String dummy = "dummy";
-			StackNodeDM node = new StackNodeDM(null, fProvider, fSession);
-
+			
 			if(fDeltaElement == null) {
 				processDelta(parent, requestMonitor, IModelDelta.CONTENT | IModelDelta.EXPAND);
-				//parent.addNode(node, IModelDelta.CONTENT | IModelDelta.EXPAND);
-				//requestMonitor.done();
 			} else {
-				//parent.addNode(fDeltaElement, IModelDelta.REMOVED);
 				processDelta(parent, requestMonitor, IModelDelta.CONTENT  | IModelDelta.EXPAND);
-				//parent.addNode("test" + Long.toString(fInitialized), triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.REPLACED);
 			}
 		} else if (event instanceof ICommandControlShutdownDMEvent) {
 			parent.setFlags(parent.getFlags() | IModelDelta.CONTENT);

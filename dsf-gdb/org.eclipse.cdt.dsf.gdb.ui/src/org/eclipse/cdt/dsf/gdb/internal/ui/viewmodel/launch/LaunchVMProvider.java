@@ -67,7 +67,7 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider
         setRootNode(launchNode);
 
         // Container node to contain all processes and threads
-        TestNode node = new TestNode(this, getSession());
+        StackAggregationNode node = new StackAggregationNode(this, getSession());
         addChildNodes(launchNode, new IVMNode[] { node });
         addChildNodes(node, new IVMNode[] { node });
         
