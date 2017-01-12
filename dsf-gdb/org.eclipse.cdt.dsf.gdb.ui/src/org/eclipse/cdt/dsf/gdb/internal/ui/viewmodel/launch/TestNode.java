@@ -387,9 +387,12 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				StackNodeDM[] children = node.getChildren().toArray(new StackNodeDM[0]);
 				if(children.length > 0) {
 					if(fDeltaElement == null) {
-						parent.addNode(children[0], flags);
-					} else {
-						parent.addNode(children[0], flags);
+						StackNodeDM child = children[0];
+						parent.addNode(new StackVMContext(child), flags);
+						while(!child.isLeaf()) {
+							child = child.getChildren().toArray(new StackNodeDM[0])[0];
+							parent.addNode(new StackVMContext(child), flags);
+						}
 					}
 					fDeltaElement = children[0];
 				}
@@ -783,7 +786,7 @@ public class TestNode implements IVMNode, IElementLabelProvider, IElementPropert
 				//requestMonitor.done();
 			} else {
 				//parent.addNode(fDeltaElement, IModelDelta.REMOVED);
-				processDelta(parent, requestMonitor, IModelDelta.CONTENT  | IModelDelta.EXPAND | IModelDelta.REPLACED);
+				processDelta(parent, requestMonitor, IModelDelta.CONTENT  | IModelDelta.EXPAND);
 				//parent.addNode("test" + Long.toString(fInitialized), triggeringCtx, IModelDelta.CONTENT | IModelDelta.EXPAND | IModelDelta.REPLACED);
 			}
 		} else if (event instanceof ICommandControlShutdownDMEvent) {
