@@ -80,6 +80,7 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 		
 		processService.getHSAWorkGroups(
 				controlService.getContext(),
+				null,
 				new ViewerDataRequestMonitor<IDMContext[]>(getExecutor(), update) {
 					@Override
 					public void handleCompleted() {

@@ -646,6 +646,8 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	//A cache for commands about the threads
 	private CommandCache fThreadCommandCache;
 	
+	private CommandCache fWaveCommandCache;
+	
 	// A temporary cache to avoid using -list-thread-groups --available more than once at the same time.
 	// We cannot cache this command because it lists all available processes, which can
 	// change at any time.  However, it is inefficient to send more than one of this command at
@@ -797,6 +799,9 @@ public class GDBProcesses_7_0 extends AbstractDsfService
         fContainerCommandCache.setContextAvailable(fCommandControl.getContext(), true);
         fThreadCommandCache = new CommandCache(getSession(), bufferedCommandControl);
         fThreadCommandCache.setContextAvailable(fCommandControl.getContext(), true);
+        
+        fWaveCommandCache = new CommandCache(getSession(), bufferedCommandControl);
+        fWaveCommandCache.setContextAvailable(fCommandControl.getContext(), true);
         
         // No need to use the bufferedCommandControl for the listThreadGroups cache
         // because it is not being affected by events.
@@ -2081,18 +2086,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	}
 
 	@Override
-	public void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+	public void getHSAWorkGroups(IDMContext dmc, IContainerDMContext contDmc, DataRequestMonitor<IDMContext[]> rm) {
 		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
 		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
 		
-		if(containerDmc != null) {
-			if (isExitedProcess(containerDmc)) {
-				rm.done();
-				return;
-			}
-			
+		if(containerDmc != null && isExitedProcess(containerDmc)) {
+			rm.done();
+			return;
+		}
+		
+		if(contDmc != null && contDmc instanceof IMIContainerDMContext) {			
 			fThreadCommandCache.execute(
-					fCommandFactory.createMIHsailWaveGroupList(controlDmc, containerDmc.getGroupId()),
+					fCommandFactory.createMIHsailWaveGroupList(controlDmc, ((IMIContainerDMContext)contDmc).getGroupId()),
 					new DataRequestMonitor<MIHsailWaveGroupInfo>(getExecutor(), rm) {
 						@Override
 						protected void handleSuccess() {
@@ -2111,17 +2116,19 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 							for(int i = 0; i < info.getWorkGroups().length; i++) {
 								/* Quick work-around for now : there is no process for HSA, so we create a fake on. */
 								IProcessDMContext processDmc = createProcessContext(controlDmc, "hsa0"); //$NON-NLS-1$
+								//String groupId = ((IMIContainerDMContext)contDmc).getGroupId() + "," + info.getWorkGroups()[i];
 								contexts[i] = createContainerContext(processDmc, info.getWorkGroups()[i]);
 							}
 							
 							rm.setData(contexts);
 							rm.done();
+							fThreadCommandCache.reset();
 							return;							
 						}
 					});
 		} else {
 			fThreadCommandCache.execute(
-					fCommandFactory.createMIHsailWaveGroupList(controlDmc, "testing"),
+					fCommandFactory.createMIHsailWaveGroupList(controlDmc, null),
 					new DataRequestMonitor<MIHsailWaveGroupInfo>(getExecutor(), rm) {
 						@Override
 						protected void handleSuccess() {
@@ -2145,6 +2152,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 							
 							rm.setData(contexts);
 							rm.done();
+							fThreadCommandCache.reset();
 							return;	
 						}
 					});
