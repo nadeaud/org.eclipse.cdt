@@ -18,6 +18,7 @@ import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMData;
 import org.eclipse.cdt.dsf.datamodel.IDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.service.IDsfService;
 
 /**
@@ -171,7 +172,7 @@ public interface IProcesses extends IDsfService {
      * @param dmc
      * @param rm
      */
-    void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);   
+    void getHSAWorkGroups(IDMContext dmc, IContainerDMContext contDmc, DataRequestMonitor<IDMContext[]> rm);   
     
     public IDMContext getHSAWorkGroupsFocus(IDMContext dmc);
     

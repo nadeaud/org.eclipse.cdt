@@ -140,7 +140,7 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 		org.eclipse.jface.viewers.TreePath path = update.getElementPath();
 		Object viewer = update.getViewerInput();
 		final IContainerDMContext contDmc = findDmcInPath(viewer, path, IContainerDMContext.class);
-		
+		final IContainerDMContext cont2 =  findDmcInPath(viewer, path, IContainerDMContext.class);
 		if (procService == null || contDmc == null) {
 			handleFailedUpdate(update);
 			return;

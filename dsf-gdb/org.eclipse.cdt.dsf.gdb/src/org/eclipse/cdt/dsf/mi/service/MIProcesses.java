@@ -740,7 +740,7 @@ public class MIProcesses extends AbstractDsfService implements IMIProcesses, ICa
 	}
 
 	@Override
-	public void getHSAWorkGroups(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm) {
+	public void getHSAWorkGroups(IDMContext dmc, IContainerDMContext contDmc, DataRequestMonitor<IDMContext[]> rm) {
 		// TODO Auto-generated method stub
 		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Unsupported Method", null)); //$NON-NLS-1$        	        			
 		rm.done();
