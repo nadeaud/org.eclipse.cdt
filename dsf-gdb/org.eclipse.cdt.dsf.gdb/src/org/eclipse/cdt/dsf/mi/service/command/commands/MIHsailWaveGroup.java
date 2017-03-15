@@ -8,12 +8,15 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIOutput;
 
 public class MIHsailWaveGroup extends MICommand<MIHsailWaveGroupInfo> {
 
-	public MIHsailWaveGroup(IDMContext ctx, String id) {
+	public MIHsailWaveGroup(IDMContext ctx, String[] ids) {
 		super(ctx, "-hsail-wave-group"); //$NON-NLS-1$
 		
 		final ArrayList<String> arguments = new ArrayList<String>();
-		if (id != null) 
-			arguments.add(id);
+		if (ids != null )
+		{
+			for(String id : ids)
+				arguments.add(id);
+		}
 		
 		setParameters(arguments.toArray(new String[0]));
 	}

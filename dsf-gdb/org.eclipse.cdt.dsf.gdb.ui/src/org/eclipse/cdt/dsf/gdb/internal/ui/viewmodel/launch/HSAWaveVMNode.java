@@ -15,6 +15,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IHSAWaveExecutionContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
+import org.eclipse.cdt.dsf.mi.service.IMIHSAContainerDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.concurrent.ViewerDataRequestMonitor;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
@@ -140,13 +141,15 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 		org.eclipse.jface.viewers.TreePath path = update.getElementPath();
 		Object viewer = update.getViewerInput();
 		final IContainerDMContext contDmc = findDmcInPath(viewer, path, IContainerDMContext.class);
-		final IContainerDMContext cont2 =  findDmcInPath(viewer, path, IContainerDMContext.class);
+		final IMIHSAContainerDMContext hsaDmc = findDmcInPath(viewer, path, IMIHSAContainerDMContext.class);
+
 		if (procService == null || contDmc == null) {
 			handleFailedUpdate(update);
 			return;
 		}
 		
 		procService.getHSAWaveForParent(contDmc, 
+				hsaDmc,
 				new ViewerDataRequestMonitor<IDMContext[]>(getSession().getExecutor(), update) {
 					@Override
 					public void handleCompleted() { 

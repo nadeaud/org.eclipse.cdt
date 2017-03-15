@@ -1008,12 +1008,12 @@ public class CommandFactory {
 	}
 	
 	/** @since 4.1 */
-	public ICommand<MIHsailWaveGroupInfo> createMIHsailWaveGroupList(ICommandControlDMContext ctx, String id) {
-		return new MIHsailWaveGroup(ctx, id);
+	public ICommand<MIHsailWaveGroupInfo> createMIHsailWaveGroupList(ICommandControlDMContext ctx, String[] ids) {
+		return new MIHsailWaveGroup(ctx, ids);
 	}
 	
-	public ICommand<MIHsailWavesInfo> createMIHsailWavesList(ICommandControlDMContext ctx, String id) {
-		return new MIHsailWaves(ctx, id);
+	public ICommand<MIHsailWavesInfo> createMIHsailWavesList(ICommandControlDMContext ctx, String[] ids) {
+		return new MIHsailWaves(ctx, ids);
 	}
 	
 	public ICommand<MIProcessesSelectionInfo> createMIProcessesSelection(ICommandControlDMContext ctx, String[] selections) {
