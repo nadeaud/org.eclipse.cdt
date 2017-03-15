@@ -91,6 +91,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThr
 import org.eclipse.cdt.dsf.mi.service.command.output.MINotifyAsyncOutput;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIOOBRecord;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIOutput;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIProcessesSelectionInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIResult;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIThread;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIThreadInfoInfo;
@@ -2201,6 +2202,24 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 						return;
 					}
 				});
+		
+	}
+	
+	@Override
+    public void setProcessSelection(ICommandControlDMContext controlContext, RequestMonitor rm, String[] selections) {
+		if (controlContext == null ) {
+			rm.done();
+			return;
+		}
+		fCommandControl.queueCommand(
+    			fCommandFactory.createMIProcessesSelection(controlContext, selections),
+				new DataRequestMonitor<MIProcessesSelectionInfo>(getExecutor(), rm) {
+    				@Override
+    				protected void handleFailure() {
+    					// The detach failed
+    					super.handleFailure();
+    				}
+    			});
 		
 	}
 }

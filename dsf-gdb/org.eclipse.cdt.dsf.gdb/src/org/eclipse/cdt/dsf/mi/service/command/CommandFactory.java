@@ -78,6 +78,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIProcessesSelectionInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIStackInfoDepthInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIStackListArgumentsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIStackListFramesInfo;
@@ -1013,5 +1014,9 @@ public class CommandFactory {
 	
 	public ICommand<MIHsailWavesInfo> createMIHsailWavesList(ICommandControlDMContext ctx, String id) {
 		return new MIHsailWaves(ctx, id);
+	}
+	
+	public ICommand<MIProcessesSelectionInfo> createMIProcessesSelection(ICommandControlDMContext ctx, String[] selections) {
+		return new MIProcessesSelection(ctx, selections);
 	}
 }

@@ -19,6 +19,7 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMData;
 import org.eclipse.cdt.dsf.datamodel.IDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
 import org.eclipse.cdt.dsf.service.IDsfService;
 
 /**
@@ -185,6 +186,16 @@ public interface IProcesses extends IDsfService {
      * @param rm Request completion monitor
      */
     void getHSAWaveForParent(IDMContext dmc, DataRequestMonitor<IDMContext[]> rm);
+    
+    
+    /**
+     * Send the list of processes on which a focus has been set.
+     * 
+     * @param Context DMC containing the selection
+     * @param rmRequest completion monitor
+     * @param selections : list of selected threads/waves
+     */
+    public void setProcessSelection(ICommandControlDMContext dmc, RequestMonitor rm, String[] selections);
     
     /**
      * Checks whether the given process or thread can be terminated.
