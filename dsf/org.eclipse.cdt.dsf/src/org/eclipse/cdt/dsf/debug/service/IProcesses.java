@@ -186,6 +186,14 @@ public interface IProcesses extends IDsfService {
      */
     void getHSAWaveForParent(IDMContext dmc, IDMContext hsaCont, DataRequestMonitor<IDMContext[]> rm);
     
+    /**
+     * Retrieves the list of work-items for the given wave.
+     * @param dmc
+     * @param hsaCont
+     * @param rm
+     */
+    void getHSAWorkItems(IDMContext dmc, IDMContext hsaCont, DataRequestMonitor<IDMContext[]> rm);
+    
     
     /**
      * Send the list of processes on which a focus has been set.

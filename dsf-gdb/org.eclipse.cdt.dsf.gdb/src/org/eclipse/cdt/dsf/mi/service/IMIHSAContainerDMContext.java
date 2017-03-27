@@ -11,6 +11,10 @@ public interface IMIHSAContainerDMContext extends IMIContainerDMContext {
 	/* Return the axis (x,y or z) for the work-group. */
 	public String getAxis();
 	
+	public String getMin();
+	
+	public String getMax();
+	
 	public IMIHSAContainerDMContext getHSAParent();
 
 }

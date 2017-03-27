@@ -32,8 +32,10 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 public class HSAGroupVMNode extends AbstractDMVMNode 
 	implements IElementLabelProvider, IElementPropertiesProvider
 {
-	public final String HSA_WORKGROUP_ID = "hsaworkgroupvmnode.property.workgroup.id";
-	public final String HSA_WORKGROUP_AXIS = "hsaworkgroupvmnode.property.workgroup.axis";
+	public final String HSA_WORKGROUP_ID = "hsaworkgroupvmnode.property.workgroup.id"; //$NON-NLS-1$
+	public final String HSA_WORKGROUP_AXIS = "hsaworkgroupvmnode.property.workgroup.axis"; //$NON-NLS-1$
+	public final String HSA_WORKGROUP_MIN = "hsaworkgroupvmnode.property.workgroup.min"; //$NON-NLS-1$
+	public final String HSA_WORKGROUP_MAX = "hsaworkgroupvmnode.property.workgroup.max"; //$NON-NLS-1$
 	
 	private IElementLabelProvider fLabelProvider;
 
@@ -48,8 +50,8 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[] {
 						new LabelText (
-								"Work-Groups : {0} = {1}", //$NON-NLS-1$
-								new String[] {HSA_WORKGROUP_AXIS, HSA_WORKGROUP_ID}),
+								"WG - {0}={2}..{3}", //$NON-NLS-1$
+								new String[] {HSA_WORKGROUP_AXIS, HSA_WORKGROUP_ID, HSA_WORKGROUP_MIN, HSA_WORKGROUP_MAX}),
 						new LabelText (
 								"Unknown HSA Groups", //$NON-NLS-1$
 								new String[] {  })
@@ -130,6 +132,8 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 					IMIHSAContainerDMContext hsaCont = (IMIHSAContainerDMContext)context.getDMContext();
 					update.setProperty(HSA_WORKGROUP_ID, hsaCont.getGroupId());
 					update.setProperty(HSA_WORKGROUP_AXIS, hsaCont.getAxis());
+					update.setProperty(HSA_WORKGROUP_MIN, hsaCont.getMin());
+					update.setProperty(HSA_WORKGROUP_MAX, hsaCont.getMax());
 				} else {
 					String x =  null;
 					assert x != null;

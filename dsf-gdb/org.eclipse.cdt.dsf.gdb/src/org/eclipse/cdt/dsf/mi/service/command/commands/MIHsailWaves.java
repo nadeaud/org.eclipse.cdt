@@ -13,6 +13,7 @@ public class MIHsailWaves extends MICommand<MIHsailWavesInfo> {
 			setParameters(ids);
 	}
 	
+	@Override
 	public MIHsailWavesInfo getResult(MIOutput out) {
 		return new MIHsailWavesInfo(out);
 	}

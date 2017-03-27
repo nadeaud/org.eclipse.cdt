@@ -765,6 +765,12 @@ public class MIProcesses extends AbstractDsfService implements IMIProcesses, ICa
 	}
 	
 	@Override
+    public void getHSAWorkItems(IDMContext dmc, IDMContext hsaCont, DataRequestMonitor<IDMContext[]> rm) {
+    	rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Unsupported Method", null)); //$NON-NLS-1$        	        			
+    	rm.done();		
+    }
+	
+	@Override
 	public void setProcessSelection(ICommandControlDMContext ctx, RequestMonitor rm, String[] selections) {
 		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Unsupported Method", null)); //$NON-NLS-1$        	        			
 		rm.done();	

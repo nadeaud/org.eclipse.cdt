@@ -74,6 +74,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowLanguageInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBVersionInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveGroupInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWavesInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWorkItemsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
@@ -1018,5 +1019,9 @@ public class CommandFactory {
 	
 	public ICommand<MIProcessesSelectionInfo> createMIProcessesSelection(ICommandControlDMContext ctx, String[] selections) {
 		return new MIProcessesSelection(ctx, selections);
+	}
+	
+	public ICommand<MIHsailWorkItemsInfo> createHsailWorkItemList(ICommandControlDMContext ctx, String waveId) {
+		return new MIHsailWorkItems(ctx, waveId);
 	}
 }

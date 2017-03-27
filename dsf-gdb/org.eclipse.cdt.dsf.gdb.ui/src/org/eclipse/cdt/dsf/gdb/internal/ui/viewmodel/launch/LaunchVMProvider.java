@@ -75,6 +75,7 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider
         IVMNode hsaNodeY = new HSAGroupVMNodeY(this, getSession());
         IVMNode hsaNodeZ = new HSAGroupVMNodeZ(this, getSession());
         IVMNode hsaWaveNode = new HSAWaveVMNode(this, getSession());
+        IVMNode hsaWorkItemNode = new HSAWorkItemVMNode(this, getSession());
         
         IVMNode containerNode = new ContainerVMNode(this, getSession());
         IVMNode processesNode = new GdbStandardProcessVMNode(this);
@@ -82,8 +83,8 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider
         addChildNodes(launchNode, new IVMNode[] { containerNode, processesNode, hsaNodeX});
         addChildNodes(hsaNodeX, new IVMNode[] { hsaNodeY });
         addChildNodes(hsaNodeY, new IVMNode[] { hsaNodeZ });
-
         addChildNodes(hsaNodeZ, new IVMNode[] { hsaWaveNode });
+        addChildNodes(hsaWaveNode, new IVMNode[] { hsaWorkItemNode });
         
         IVMNode threadsNode = new ThreadVMNode(this, getSession());
         addChildNodes(containerNode, new IVMNode[] { threadsNode });

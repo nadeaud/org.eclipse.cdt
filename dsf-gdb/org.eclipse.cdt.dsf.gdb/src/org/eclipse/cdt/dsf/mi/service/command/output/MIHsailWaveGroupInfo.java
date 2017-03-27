@@ -6,18 +6,22 @@ import java.util.List;
 
 public class MIHsailWaveGroupInfo extends MIInfo{
 
-	private List<String> fIds = null;
-
-	private String[] fUniqueIds = null;
+	public class WorkGroupRange {
+		public String id;
+		public String min;
+		public String max;
+	}
+	
+	private List<WorkGroupRange> fWGRange = null;
+	HashSet<String> fSet = new HashSet<String>();
 
 	public MIHsailWaveGroupInfo(MIOutput record) {
 		super(record);
-		// TODO Auto-generated constructor stub
 		parse();
 	}
 
-	public String[] getWorkGroups() {
-		return fUniqueIds;
+	public List<WorkGroupRange> getWorkGroups() {
+		return fWGRange;
 	}
 
 	protected void parse() {
@@ -32,20 +36,30 @@ public class MIHsailWaveGroupInfo extends MIInfo{
 
 				for (int i = 0; i < results.length; i++) {
 					String var = results[i].getVariable();
-					if (var.equals("workgroups")) {
+					if (var.equals("workgroups")) { //$NON-NLS-1$
 						MIList list = (MIList)results[i].getMIValue();
-						fIds = new ArrayList<String>(list.getMIValues().length);
+						fWGRange = new ArrayList<WorkGroupRange>(list.getMIValues().length);
 						for(int j = 0; j < list.getMIValues().length; j++) {
-							MIValue val = list.getMIValues()[j];
-							fIds.add(((MITuple)val).getField("id").toString());
-						}
-						HashSet<String> set = new HashSet<>(fIds);
-						fUniqueIds = set.toArray(new String[0]);							
+							MITuple tuple = (MITuple)list.getMIValues()[j];
+							parse_entry(tuple);
+						}							
 					}
 				}
 			}
-
 		}
+	}
+	
+	protected void parse_entry (MITuple tuple) {
+		if( fSet.contains(tuple.getField("id").toString()) ) //$NON-NLS-1$
+			return;
+		
+		fSet.add(tuple.getField("id").toString()); //$NON-NLS-1$
+		
+		WorkGroupRange wgr = new WorkGroupRange();
+		wgr.id = tuple.getField("id").toString(); //$NON-NLS-1$
+		wgr.min = tuple.getField("min").toString(); //$NON-NLS-1$
+		wgr.max = tuple.getField("max").toString(); //$NON-NLS-1$
+		fWGRange.add(wgr);
 	}
 }
 

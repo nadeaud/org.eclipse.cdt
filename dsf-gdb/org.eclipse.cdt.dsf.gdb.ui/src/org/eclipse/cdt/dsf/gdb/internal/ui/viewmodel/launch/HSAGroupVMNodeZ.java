@@ -63,7 +63,9 @@ public class HSAGroupVMNodeZ extends HSAGroupVMNode {
 											processCont, 
 											contDmc, 
 											"-1",  //$NON-NLS-1$
-											"z"); //$NON-NLS-1$
+											"z", //$NON-NLS-1$
+											"0", //$NON-NLS-1$
+											"0"); //$NON-NLS-1$
 							fillUpdateWithVMCs(update, new IDMContext[]{emptyCont});
 						}
 						

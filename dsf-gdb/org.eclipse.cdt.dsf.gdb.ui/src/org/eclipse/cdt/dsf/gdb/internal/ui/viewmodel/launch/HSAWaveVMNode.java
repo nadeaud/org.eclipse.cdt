@@ -12,7 +12,7 @@ import org.eclipse.cdt.dsf.debug.service.IBreakpointsExtension.IBreakpointHitDME
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IHSAWaveExecutionContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IMIHSAWaveExecutionContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.mi.service.IMIHSAContainerDMContext;
@@ -44,7 +44,7 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 	public final String HSA_WAVE_NODE_VM_ID = "WAVE.NODE.VM.WAVE.ID"; //$NON-NLS-1$
 
 	public HSAWaveVMNode(AbstractDMVMProvider provider, DsfSession session) {
-		super(provider, session, IRunControl.IHSAWaveExecutionContext.class);
+		super(provider, session, IRunControl.IMIHSAWaveExecutionContext.class);
 		fLabelProvider = createElementLabelProvider();		
 	}
 	
@@ -68,8 +68,8 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 		for (final IPropertiesUpdate update : updates) {
 			if(update.getElement() instanceof IDMVMContext) {
 				IDMVMContext context  = (IDMVMContext)update.getElement();
-				if(context.getDMContext() instanceof IHSAWaveExecutionContext) {
-					IHSAWaveExecutionContext ctx = (IHSAWaveExecutionContext)context.getDMContext();
+				if(context.getDMContext() instanceof IMIHSAWaveExecutionContext) {
+					IMIHSAWaveExecutionContext ctx = (IMIHSAWaveExecutionContext)context.getDMContext();
 					update.setProperty(HSA_WAVE_NODE_VM_ID_X, ctx.getX());
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Y, ctx.getY());
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Z, ctx.getZ());
@@ -158,6 +158,10 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 							return;
 						}
 						IDMContext[] contexts = getData();
+						if(contexts == null) {
+							handleFailedUpdate(update);
+							return;
+						}
 						fillUpdateWithVMCs(update, contexts);
 						update.done();
 					}

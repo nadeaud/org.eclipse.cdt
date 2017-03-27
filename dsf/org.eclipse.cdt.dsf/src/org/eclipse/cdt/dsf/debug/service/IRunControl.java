@@ -43,7 +43,7 @@ public interface IRunControl extends IDsfService
      * operations. 
      */
     
-    public interface IHSAWaveExecutionContext extends IExecutionDMContext {
+    public interface IMIHSAWaveExecutionContext extends IExecutionDMContext {
     	/**
     	 *  Retrieve the wave Id
     	 * @return
@@ -80,6 +80,40 @@ public interface IRunControl extends IDsfService
     	 */
     	public String getSIMD();
     	
+    }
+    
+    public interface IMIHSAWorkItemContext extends IExecutionDMContext {
+
+    	/**
+    	 * Retrieve the id in X dimension
+    	 * @return id
+    	 */
+    	public String getX();
+    	/**
+    	 * Retrieve the id in Y dimension
+    	 * @return id
+    	 */
+    	public String getY();
+    	/**
+    	 * Retrieve the id in Z dimension
+    	 * @return id
+    	 */
+    	public String getZ();
+    	/**
+    	 * Retrieve the absolute id in X dimension
+    	 * @return id
+    	 */
+    	public String getAbsX();
+    	/**
+    	 * Retrieve the absolute id in Y dimension
+    	 * @return id
+    	 */
+    	public String getAbsY();
+    	/**
+    	 * Retrieve the absolute id in Z dimension
+    	 * @return id
+    	 */
+    	public String getAbsZ();
     }
 
     public interface IContainerDMContext extends IExecutionDMContext {}

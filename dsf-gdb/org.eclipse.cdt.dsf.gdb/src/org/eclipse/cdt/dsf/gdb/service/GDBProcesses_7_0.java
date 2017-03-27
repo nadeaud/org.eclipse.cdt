@@ -57,7 +57,8 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IHSAWaveExecutionContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IMIHSAWaveExecutionContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IMIHSAWorkItemContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
@@ -87,6 +88,7 @@ import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupExitedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWaveGroupInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWavesInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIHsailWorkItemsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThreadGroupInfo;
@@ -199,7 +201,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	
 	@Immutable
 	static class MIHSAExecutionContext extends AbstractDMContext 
-	implements IHSAWaveExecutionContext
+	implements IMIHSAWaveExecutionContext
 	{
 		private String xId;
 		private String yId;
@@ -269,6 +271,77 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		}
 		
 	}
+	
+	@Immutable
+	static class MIHSAWorkItemContext extends AbstractDMContext 
+	implements IMIHSAWorkItemContext
+	{
+		private String xId;
+		private String yId;
+		private String zId;
+		private String absXId;
+		private String absYId;
+		private String absZId;
+
+		
+		protected MIHSAWorkItemContext(String sessionId, IExecutionDMContext containerDmc,
+				MIHsailWorkItemsInfo.HsailWorkItem workItem) {
+			super(sessionId,
+					containerDmc == null ? new IDMContext[0] :new IDMContext[] { containerDmc });
+			this.xId = workItem.xId;
+			this.yId = workItem.yId;
+			this.zId = workItem.zId;
+			this.absXId = workItem.absXId;
+			this.absYId = workItem.absYId;
+			this.absZId = workItem.absZId;			
+		}
+		
+		@Override
+		public String getX() {
+			return xId;
+		}
+		@Override
+		public String getY() {
+			return yId;
+		}
+
+		@Override
+		public String getZ() {
+			return zId;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if(! (obj instanceof IMIHSAWorkItemContext))
+				return false;
+			IMIHSAWorkItemContext ctx = (IMIHSAWorkItemContext)obj;
+			return this.absXId.equals(ctx.getAbsX()) &&
+					this.absYId.equals(ctx.getAbsY()) &&
+					this.absZId.equals(ctx.getAbsZ());
+		}
+
+		@Override
+		public int hashCode() {
+			return xId.hashCode() ^ yId.hashCode() ^ zId.hashCode() ^ 
+					absXId.hashCode() ^ absYId.hashCode() ^ absZId.hashCode();
+		}
+
+		@Override
+		public String getAbsX() {
+			return absXId;
+		}
+
+		@Override
+		public String getAbsY() {
+			return absYId;
+		}
+
+		@Override
+		public String getAbsZ() {
+			return absZId;
+		}
+		
+	}
 
 	/**
 	 * Context representing a thread group of GDB/MI. 
@@ -327,12 +400,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	implements IMIHSAContainerDMContext
 	{
 		private String axis;
+		private String fMin;
+		private String fMax;
 		private IMIHSAContainerDMContext parentContainer;
 
-		public HSAGDBContainerDMC(String sessionId, IProcessDMContext processDmc, IMIHSAContainerDMContext parent, String groupId, String axis) {
+		public HSAGDBContainerDMC(String sessionId, IProcessDMContext processDmc, 
+				IMIHSAContainerDMContext parent, String groupId, String axis,
+				String min, String max) {
 			super(sessionId, processDmc, groupId);
 			this.axis = axis;
 			this.parentContainer = parent;
+			this.fMin = min;
+			this.fMax = max;
 		}
 		
 		@Override
@@ -362,6 +441,16 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		@Override
 		public String getAxis() {
 			return axis;
+		}
+		
+		@Override
+		public String getMin() {
+			return fMin;
+		}
+		
+		@Override
+		public String getMax() {
+			return fMax;
 		}
 	}
 	
@@ -979,7 +1068,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     	return new MIExecutionDMC(getSession().getId(), containerDmc, threadDmc, threadId);
     }
 	
-	public IHSAWaveExecutionContext createHSAExecutionContext(IContainerDMContext containerDmc, 
+	public IMIHSAWaveExecutionContext createHSAExecutionContext(IContainerDMContext containerDmc, 
                                                         MIHsailWavesInfo.HsailWaveData data) {
 		MIHSAExecutionContext ctx = new MIHSAExecutionContext(getSession().getId(), containerDmc);
 		ctx.xId = data.xWg == null ? "" : data.xWg; //$NON-NLS-1$
@@ -991,6 +1080,15 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		ctx.waveId = data.waveId == null ? "" : data.waveId; //$NON-NLS-1$
 		return ctx;
 	}
+	
+	public IMIHSAWorkItemContext createHSAWorkItemContext(IExecutionDMContext waveCont,
+										MIHsailWorkItemsInfo.HsailWorkItem workItem) {
+		
+		return new MIHSAWorkItemContext(
+				getSession().getId(), 
+				waveCont, 
+				workItem);
+	}
 
 	@Override
     public IMIContainerDMContext createContainerContext(IProcessDMContext processDmc,
@@ -998,11 +1096,15 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     	return new GDBContainerDMC(getSession().getId(), processDmc, groupId);
     }
 	
-	public IMIHSAContainerDMContext createHSAContainerContext(IProcessDMContext processDmc,
+	public IMIHSAContainerDMContext createHSAContainerContext(
+			IProcessDMContext processDmc,
 			IMIHSAContainerDMContext parent,
 			String groupId,
-			String axis) {
-		return new HSAGDBContainerDMC(getSession().getId(), processDmc, parent, groupId, axis);
+			String axis,
+			String min,
+			String max) {
+		return new HSAGDBContainerDMC(getSession().getId(), processDmc, parent, 
+				groupId, axis, min, max);
 	}
 
 	@Override
@@ -2142,6 +2244,10 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
 		final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
 
+		if(controlDmc == null) {
+			rm.done();
+			return;
+		}
 		if(containerDmc != null && isExitedProcess(containerDmc)) {
 			rm.done();
 			return;
@@ -2167,21 +2273,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 							return;
 						}
 						MIHsailWaveGroupInfo info = getData();
-						if(info == null || info.getWorkGroups() == null || info.getWorkGroups().length <= 0) {
+						if(info == null || info.getWorkGroups() == null || info.getWorkGroups().size() <= 0) {
 							rm.done();
 							return;
 						}
-						IMIHSAContainerDMContext[] contexts = new IMIHSAContainerDMContext[info.getWorkGroups().length];
-						for(int i = 0; i < info.getWorkGroups().length; i++) {
-							/* Quick work-around for now : there is no process for HSA, so we create a fake on. */
+						IMIHSAContainerDMContext[] contexts = new IMIHSAContainerDMContext[info.getWorkGroups().size()];
+						int i = 0;
+						for (MIHsailWaveGroupInfo.WorkGroupRange range : info.getWorkGroups()) {
 							IProcessDMContext processDmc = createProcessContext(controlDmc, "hsa0"); //$NON-NLS-1$
-							contexts[i] = createHSAContainerContext(processDmc,
-									parent instanceof IMIHSAContainerDMContext ? 
-											(IMIHSAContainerDMContext)parent :
-												null,
-												info.getWorkGroups()[i], axis);
+							contexts[i++] = createHSAContainerContext(processDmc,
+									parent instanceof IMIHSAContainerDMContext ? (IMIHSAContainerDMContext)parent : null,
+									range.id, axis, range.min, range.max );
 						}
-
 						rm.setData(contexts);
 						rm.done();
 						fThreadCommandCache.reset();
@@ -2249,6 +2352,45 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 				});
 		
 	}
+	
+	@Override
+	public void getHSAWorkItems(IDMContext dmc, IDMContext hsaDmc, DataRequestMonitor<IDMContext[]> rm) {
+		final ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+		
+		if (controlDmc == null || hsaDmc == null) {
+			rm.done();
+			return;
+		}
+		
+		if(!(hsaDmc instanceof IMIHSAWaveExecutionContext)) {
+			rm.done();
+			return;
+		}
+		IMIHSAWaveExecutionContext hsaCont = (IMIHSAWaveExecutionContext)hsaDmc;
+
+		String waveId = hsaCont.getId();
+		
+		fThreadCommandCache.execute(
+				fCommandFactory.createHsailWorkItemList(controlDmc, waveId),
+				new DataRequestMonitor<MIHsailWorkItemsInfo>(getExecutor(), rm) {
+					@Override
+					protected void handleSuccess() {
+						if(!isSuccess()) {
+							rm.done(new IDMContext[0]);
+						}
+						MIHsailWorkItemsInfo info = getData();
+						List<IDMContext> ctxs = new ArrayList<IDMContext>(info.getItems().size());
+				
+						for(MIHsailWorkItemsInfo.HsailWorkItem data : info.getItems()) {
+							ctxs.add(createHSAWorkItemContext((IExecutionDMContext)hsaDmc, data));
+						}
+						rm.done(ctxs.toArray(new IDMContext[0]));
+						return;
+					}
+				});
+	}
+	
+	
 	
 	@Override
     public void setProcessSelection(ICommandControlDMContext controlContext, RequestMonitor rm, String[] selections) {
