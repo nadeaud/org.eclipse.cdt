@@ -1021,6 +1021,14 @@ public class CommandFactory {
 		return new MIProcessesSelection(ctx, selections);
 	}
 	
+	public ICommand<MIInfo> createMIAddFilterThread(ICommandControlDMContext ctx, String id) {
+		return new MIAddFilterThread(ctx, id);
+	}
+	
+	public ICommand<MIInfo> createMIAddFilterThread(ICommandControlDMContext ctx, String[] ids) {
+		return new MIAddFilterThread(ctx, ids);
+	}
+	
 	public ICommand<MIHsailWorkItemsInfo> createHsailWorkItemList(ICommandControlDMContext ctx, String waveId) {
 		return new MIHsailWorkItems(ctx, waveId);
 	}

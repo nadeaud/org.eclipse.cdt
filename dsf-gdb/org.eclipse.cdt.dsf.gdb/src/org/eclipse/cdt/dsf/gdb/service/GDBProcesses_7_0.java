@@ -2393,20 +2393,44 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	
 	
 	@Override
-    public void setProcessSelection(ICommandControlDMContext controlContext, RequestMonitor rm, String[] selections) {
+    public void setProcessSelection(ICommandControlDMContext controlContext, RequestMonitor rm, String[] selections, IDMContext[] ctxs) {
 		if (controlContext == null ) {
 			rm.done();
 			return;
 		}
-		fCommandControl.queueCommand(
-    			fCommandFactory.createMIProcessesSelection(controlContext, selections),
-				new DataRequestMonitor<MIProcessesSelectionInfo>(getExecutor(), rm) {
-    				@Override
-    				protected void handleFailure() {
-    					// The detach failed
-    					super.handleFailure();
-    				}
-    			});
+		if (ctxs == null) {
+			fCommandControl.queueCommand(
+	    			fCommandFactory.createMIProcessesSelection(controlContext, selections),
+					new DataRequestMonitor<MIProcessesSelectionInfo>(getExecutor(), rm) {
+	    				@Override
+	    				protected void handleFailure() {
+	    					// The detach failed
+	    					super.handleFailure();
+	    				}
+	    			});
+		}
+		else {
+			List<String> ids = new ArrayList<String>();
+			for(IDMContext ctx : ctxs) {
+				if(ctx instanceof IMIExecutionDMContext) {
+					ids.add(((IMIExecutionDMContext)ctx).getThreadId());
+				}
+			}
+			String[] args = ids.toArray(new String[0]);
+			if(args.length > 0) {
+				fCommandControl.queueCommand(
+						fCommandFactory.createMIAddFilterThread(controlContext, args),
+						new DataRequestMonitor<MIInfo>(getExecutor(), rm) {
+		    				@Override
+		    				protected void handleCompleted () {
+		    					fThreadCommandCache.reset();
+		    					fContainerCommandCache.reset();
+		    					rm.done();
+		    				}
+						});
+			}
+			
+		}
 		
 	}
 }

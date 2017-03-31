@@ -202,7 +202,7 @@ public interface IProcesses extends IDsfService {
      * @param rmRequest completion monitor
      * @param selections : list of selected threads/waves
      */
-    public void setProcessSelection(ICommandControlDMContext dmc, RequestMonitor rm, String[] selections);
+    public void setProcessSelection(ICommandControlDMContext dmc, RequestMonitor rm, String[] selections, IDMContext[] ctx);
     
     /**
      * Checks whether the given process or thread can be terminated.
