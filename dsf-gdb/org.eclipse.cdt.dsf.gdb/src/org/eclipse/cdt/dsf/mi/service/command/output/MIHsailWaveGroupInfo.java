@@ -1,6 +1,8 @@
 package org.eclipse.cdt.dsf.mi.service.command.output;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
@@ -42,7 +44,15 @@ public class MIHsailWaveGroupInfo extends MIInfo{
 						for(int j = 0; j < list.getMIValues().length; j++) {
 							MITuple tuple = (MITuple)list.getMIValues()[j];
 							parse_entry(tuple);
-						}							
+						}
+						if(fWGRange.size() > 0) {
+							Collections.sort(fWGRange, new Comparator<WorkGroupRange>() {
+								@Override
+								public int compare(final WorkGroupRange obj1, final WorkGroupRange obj2) {
+									return obj1.id.compareTo(obj2.id);
+								}
+							});
+						}
 					}
 				}
 			}

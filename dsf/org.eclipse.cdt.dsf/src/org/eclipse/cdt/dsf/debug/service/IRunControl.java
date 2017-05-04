@@ -79,7 +79,11 @@ public interface IRunControl extends IDsfService
     	 * @return id
     	 */
     	public String getSIMD();
-    	
+    	/**
+    	 * Return the program counter    	
+    	 * @return
+    	 */
+    	public String getPC();
     }
     
     public interface IMIHSAWorkItemContext extends IExecutionDMContext {

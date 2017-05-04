@@ -34,7 +34,7 @@ public class HSAGroupVMNodeX extends HSAGroupVMNode {
 		}
 				
 		processService.getHSAWorkGroups(controlService.getContext(),
-				"x", //$NON-NLS-1$
+				"X", //$NON-NLS-1$
 				null, 
 				new DataRequestMonitor<IDMContext[]>(getExecutor(), rm) {
 					@Override
@@ -66,7 +66,7 @@ public class HSAGroupVMNodeX extends HSAGroupVMNode {
 		
 		
 		processService.getHSAWorkGroups(controlService.getContext(),
-				"x", //$NON-NLS-1$
+				"X", //$NON-NLS-1$
 				null, 
 				new ViewerDataRequestMonitor<IDMContext[]>(getExecutor(), update) {
 					@Override

@@ -210,6 +210,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		private String cuId;
 		private String simdId;
 		private String waveId;
+		private String pc;
 		
 		protected MIHSAExecutionContext(String sessionId, IContainerDMContext containerDmc) {
 			super(sessionId,
@@ -249,6 +250,11 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		@Override
 		public String getSIMD() {
 			return simdId;
+		}
+		
+		@Override
+		public String getPC() {
+			return pc;
 		}
 
 		@Override
@@ -1078,6 +1084,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		ctx.cuId = data.computeUnit == null ? "" : data.computeUnit; //$NON-NLS-1$
 		ctx.simdId = data.simd == null ? "" : data.simd; //$NON-NLS-1$
 		ctx.waveId = data.waveId == null ? "" : data.waveId; //$NON-NLS-1$
+		ctx.pc = data.pc == null ? "" : data.pc; //$NON-NLS-1$
 		return ctx;
 	}
 	

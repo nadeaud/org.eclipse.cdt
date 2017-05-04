@@ -45,7 +45,7 @@ public class HSAGroupVMNodeZ extends HSAGroupVMNode {
 		}
 		
 		processService.getHSAWorkGroups(controlService.getContext(),
-				"z", //$NON-NLS-1$
+				"Z", //$NON-NLS-1$
 				contDmc, 
 				new ViewerDataRequestMonitor<IDMContext[]>(getExecutor(), update) {
 					@Override

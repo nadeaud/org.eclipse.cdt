@@ -32,7 +32,7 @@ public class HSAGroupVMNodeY extends HSAGroupVMNode {
 		}
 		
 		processService.getHSAWorkGroups(controlService.getContext(), 
-				"y", //$NON-NLS-1$
+				"Y", //$NON-NLS-1$
 				contDmc,
 				new ViewerDataRequestMonitor<IDMContext[]>(getExecutor(), update) {
 					@Override

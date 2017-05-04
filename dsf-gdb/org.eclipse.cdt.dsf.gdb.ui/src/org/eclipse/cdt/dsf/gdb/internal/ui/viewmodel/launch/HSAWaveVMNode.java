@@ -26,12 +26,15 @@ import org.eclipse.cdt.dsf.ui.viewmodel.properties.IElementPropertiesProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.IPropertiesUpdate;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelAttribute;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelColumnInfo;
+import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelImage;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.LabelText;
 import org.eclipse.cdt.dsf.ui.viewmodel.properties.PropertiesBasedLabelProvider;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IChildrenUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.ILabelUpdate;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
+import org.eclipse.debug.ui.DebugUITools;
+import org.eclipse.debug.ui.IDebugUIConstants;
 
 public class HSAWaveVMNode extends AbstractDMVMNode
 	implements IElementLabelProvider, IElementPropertiesProvider
@@ -42,6 +45,7 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 	public final String HSA_WAVE_NODE_VM_ID_Y = "WAVE.NODE.VM.Y.ID"; //$NON-NLS-1$
 	public final String HSA_WAVE_NODE_VM_ID_Z = "WAVE.NODE.VM.Z.ID"; //$NON-NLS-1$
 	public final String HSA_WAVE_NODE_VM_ID = "WAVE.NODE.VM.WAVE.ID"; //$NON-NLS-1$
+	public final String HSA_WAVE_NODE_VM_PC = "WAVE.NODE.VM.WAVE.PC"; //$NON-NLS-1$
 
 	public HSAWaveVMNode(AbstractDMVMProvider provider, DsfSession session) {
 		super(provider, session, IRunControl.IMIHSAWaveExecutionContext.class);
@@ -54,11 +58,15 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[] {
 						new LabelText (
-								"Wave {0}, Work-Group ({1},{2},{3})", //$NON-NLS-1$
-								new String[] {HSA_WAVE_NODE_VM_ID, HSA_WAVE_NODE_VM_ID_X, HSA_WAVE_NODE_VM_ID_Y, HSA_WAVE_NODE_VM_ID_Z}),
+								"Wave {0} at PC={1} in Work-Group ({2},{3},{4})", //$NON-NLS-1$
+								new String[] {HSA_WAVE_NODE_VM_ID, HSA_WAVE_NODE_VM_PC,
+										HSA_WAVE_NODE_VM_ID_X, HSA_WAVE_NODE_VM_ID_Y, 
+										HSA_WAVE_NODE_VM_ID_Z}),
 						new LabelText (
 								"Unknown wave", //$NON-NLS-1$
-								new String[] { })
+								new String[] { }
+								),
+						 new LabelImage(DebugUITools.getImageDescriptor(IDebugUIConstants.IMG_OBJS_THREAD_SUSPENDED))
 				}));
 		return provider;
 	}
@@ -74,6 +82,7 @@ public class HSAWaveVMNode extends AbstractDMVMNode
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Y, ctx.getY());
 					update.setProperty(HSA_WAVE_NODE_VM_ID_Z, ctx.getZ());
 					update.setProperty(HSA_WAVE_NODE_VM_ID, ctx.getId());
+					update.setProperty(HSA_WAVE_NODE_VM_PC, ctx.getPC());
 				}
 			}
 			update.done();

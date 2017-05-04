@@ -13,6 +13,7 @@ public class MIHsailWavesInfo extends MIInfo {
 		public String computeUnit;
 		public String simd;
 		public String waveId;
+		public String pc;
 	}
 	
 	private List<HsailWaveData> fHsailWaves = new ArrayList<>();
@@ -64,6 +65,8 @@ public class MIHsailWavesInfo extends MIInfo {
 				data.simd = results[i].getMIValue().toString();
 			} else if(results[i].getVariable().equals("waveId")) {
 				data.waveId = results[i].getMIValue().toString();
+			} else if(results[i].getVariable().equals("pc")) {
+				data.pc = results[i].getMIValue().toString();
 			}
 		}
 		fHsailWaves.add(data);

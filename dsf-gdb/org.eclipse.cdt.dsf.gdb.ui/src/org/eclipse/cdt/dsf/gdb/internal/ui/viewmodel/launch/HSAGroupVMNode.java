@@ -50,11 +50,12 @@ public class HSAGroupVMNode extends AbstractDMVMNode
 				PropertiesBasedLabelProvider.ID_COLUMN_NO_COLUMNS,
 				new LabelColumnInfo(new LabelAttribute[] {
 						new LabelText (
-								"WG - {0}={2}..{3}", //$NON-NLS-1$
-								new String[] {HSA_WORKGROUP_AXIS, HSA_WORKGROUP_ID, HSA_WORKGROUP_MIN, HSA_WORKGROUP_MAX}),
+								"Work-Groups in range {0}=({1},{2})", //$NON-NLS-1$
+								new String[] {HSA_WORKGROUP_AXIS, HSA_WORKGROUP_MIN, HSA_WORKGROUP_MAX}),
 						new LabelText (
 								"Unknown HSA Groups", //$NON-NLS-1$
-								new String[] {  })
+								new String[] {  }),
+						 //new LabelImage(DebugUITools.getImageDescriptor(IDebugUIConstants.IMG_OBJS_DEBUG_TARGET_SUSPENDED)),
 				}));
 		return provider;
 	}
